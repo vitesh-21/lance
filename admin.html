@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard | Stock Management System</title>
+    <title>Dashboard | Stock Management System (JS Version)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
@@ -80,16 +80,6 @@
         .nav-item:hover { background: #eee; }
         .nav-item.active { background: var(--accent-blue); color: white; }
 
-        /* TABLES */
-        .inventory-table {
-            width: 100%; background: white; border-collapse: collapse; border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-top: 20px; overflow: hidden;
-        }
-        .inventory-table thead tr { background-color: #34495e; color: white; }
-        .inventory-table th { padding: 15px; text-align: left; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; }
-        .inventory-table td { padding: 15px; border-top: 1px solid #eee; vertical-align: middle; }
-        .inventory-table tr:hover { background-color: #fcfcfc; }
-
         /* CARDS */
         .stats-grid {
             display: grid;
@@ -105,7 +95,37 @@
             position: relative;
             overflow: hidden;
         }
+        .card h3 { font-size: 0.85rem; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;}
         .card .value { font-size: 1.8rem; font-weight: bold; color: #2c3e50; }
+        .card .icon {
+            position: absolute; right: 15px; bottom: 15px; font-size: 2.5rem; opacity: 0.1;
+        }
+
+        /* REPORT SPECIFIC COLORS */
+        .report-card { border-top: 5px solid transparent; text-align: center; }
+        .report-card.cash { background: #ebf8ff; border-top-color: var(--accent-blue); }
+        .report-card.mpesa { background: #f0fff4; border-top-color: var(--success-green); }
+        .report-card.card-pay { background: #fffaf0; border-top-color: var(--warning-orange); }
+
+        /* STATUS BADGES */
+        .badge { padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
+        .badge-success { background: #eafaf1; color: #27ae60; }
+        .badge-warning { background: #fff3e0; color: #f39c12; }
+        .badge-danger { background: #fdeaea; color: #e74c3c; }
+
+        /* TABLES */
+        .inventory-table {
+            width: 100%; background: white; border-collapse: collapse; border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-top: 20px; overflow: hidden;
+        }
+        .inventory-table thead tr { background-color: #34495e; color: white; }
+        .inventory-table th { padding: 15px; text-align: left; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; }
+        .inventory-table td { padding: 15px; border-top: 1px solid #eee; vertical-align: middle; }
+        .inventory-table tr:hover { background-color: #fcfcfc; }
+
+        .activity-section { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .activity-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #f9f9f9; }
+        .activity-icon { width: 35px; height: 35px; background: #e8f4fd; color: var(--accent-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; font-size: 0.9rem; }
 
         /* MODALS */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(3px); }
@@ -115,18 +135,10 @@
         .add-btn { background: var(--success-green); color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         .add-btn:hover { background: #219150; transform: translateY(-1px); }
 
-        .badge { padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
-        .badge-info { background: #e8f4fd; color: #3498db; }
-
-        .alert-toast { position: fixed; top: 20px; right: 20px; background: var(--success-green); color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 2000; display: none; }
-
-        .search-container { margin-bottom: 15px; }
-        .search-input { width: 300px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .alert-toast { position: fixed; top: 20px; right: 20px; background: var(--success-green); color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 1001; display: none; }
     </style>
 </head>
 <body>
-
-    <div id="toast" class="alert-toast">Success!</div>
 
     <aside class="side-bar">
         <div class="sidebar-top">
@@ -134,31 +146,33 @@
         </div>
         
         <div class="sidebar-links" style="flex: 1; display: flex; flex-direction: column;">
-            <a class="side-item active" data-tab="home" onclick="showTab('home', this)"><i class="fas fa-th-large"></i></a>
-            <a class="side-item" data-tab="products" onclick="showTab('products', this)"><i class="fas fa-box"></i></a>
-            <a class="side-item" data-tab="users-tab" onclick="showTab('users-tab', this)"><i class="fas fa-users"></i></a>
-            <a class="side-item" data-tab="reports" onclick="showTab('reports', this)"><i class="fas fa-chart-line"></i></a>
+            <a class="side-item active" title="Dashboard" onclick="showTab('home', this)"><i class="fas fa-th-large"></i></a>
+            <a class="side-item" title="Inventory" onclick="showTab('products', this)"><i class="fas fa-box"></i></a>
+            <a class="side-item" title="Suppliers" onclick="showTab('suppliers', this)"><i class="fas fa-truck"></i></a>
+            <a class="side-item" title="Reports" onclick="showTab('reports', this)"><i class="fas fa-chart-line"></i></a>
             <hr style="width: 40%; align-self: center; border: 0.5px solid rgba(255,255,255,0.1); margin: 10px 0;">
-            <a class="side-item" data-tab="settings" onclick="showTab('settings', this)"><i class="fas fa-cog"></i></a>
+            <a class="side-item" title="Settings" onclick="showTab('settings', this)"><i class="fas fa-cog"></i></a>
         </div>
 
-        <div class="sidebar-bottom">
-            <a class="side-item" onclick="location.reload()" style="color: var(--danger-red);"><i class="fas fa-power-off"></i></a>
+        <div class="sidebar-bottom" style="display: flex; flex-direction: column;">
+            <a class="side-item" title="Logout" onclick="logout()" style="color: var(--danger-red);"><i class="fas fa-power-off"></i></a>
         </div>
     </aside>
 
     <div class="dashboard-container">
         <header class="main-header">
             <h1>STOCK MANAGEMENT SYSTEM</h1>
-            <p style="font-size: 0.9rem; margin-top: 5px; opacity: 0.8;">Local Database Mode</p>
+            <p style="font-size: 0.9rem; margin-top: 5px; opacity: 0.8;">
+                <i class="fas fa-user-shield"></i> Local Management Mode (No Server Required)
+            </p>
         </header>
 
         <nav class="nav-bar">
-            <a class="nav-item active" data-tab="home" onclick="showTab('home', this)">Home</a>
-            <a class="nav-item" data-tab="products" onclick="showTab('products', this)">Products</a>
-            <a class="nav-item" data-tab="users-tab" onclick="showTab('users-tab', this)">Users</a>
-            <a class="nav-item" data-tab="sales" onclick="showTab('sales', this)">Sales</a>
-            <a class="nav-item" data-tab="reports" onclick="showTab('reports', this)">Reports</a>
+            <a class="nav-item active" onclick="showTab('home', this)"><i class="fas fa-home"></i> Home</a>
+            <a class="nav-item" onclick="showTab('products', this)"><i class="fas fa-box"></i> Products</a>
+            <a class="nav-item" onclick="showTab('suppliers', this)"><i class="fas fa-truck"></i> Suppliers</a>
+            <a class="nav-item" onclick="showTab('sales', this)"><i class="fas fa-clock-rotate-left"></i> Sales History</a>
+            <a class="nav-item" onclick="showTab('reports', this)"><i class="fas fa-chart-pie"></i> Reports</a>
         </nav>
 
         <div id="home" class="tab-content">
@@ -166,205 +180,312 @@
                 <div class="card" style="border-top: 4px solid var(--accent-blue);">
                     <h3>Total Products</h3>
                     <div id="stat-total-products" class="value">0</div>
+                    <i class="fas fa-boxes-stacked icon"></i>
                 </div>
                 <div class="card" style="border-top: 4px solid var(--warning-orange);">
-                    <h3>System Users</h3>
-                    <div id="stat-total-users" class="value">0</div>
+                    <h3>Low Stock Alert</h3>
+                    <div id="stat-low-stock" class="value">0</div>
+                    <i class="fas fa-exclamation-triangle icon"></i>
                 </div>
-                <div id="revenue-card" class="card" style="border-top: 4px solid var(--success-green);">
-                    <h3>Revenue</h3>
+                <div class="card" style="border-top: 4px solid var(--success-green);">
+                    <h3>Total Revenue</h3>
                     <div id="stat-total-revenue" class="value">Ksh 0</div>
+                    <i class="fas fa-money-bill-trend-up icon"></i>
                 </div>
             </section>
-        </div>
-
-        <div id="users-tab" class="tab-content" style="display:none;">
-            <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 15px;">
-                <h2>System Users / Staff</h2>
-                <button class="add-btn" style="background: var(--accent-blue);" onclick="openUserModal()">Add User</button>
-            </div>
             
-            <div class="search-container">
-                <input type="text" id="userSearch" class="search-input" placeholder="Search users by name or email..." onkeyup="render()">
+            <div class="activity-section">
+                <h2 style="margin-bottom: 20px; color: var(--primary-dark); font-size: 1.1rem; border-bottom: 1px solid #eee; padding-bottom: 10px;">Recent Activity</h2>
+                <div id="recent-activity-list" class="activity-list"></div>
             </div>
-
-            <table class="inventory-table">
-                <thead>
-                    <tr><th>ID</th><th>Full Name</th><th>Role</th><th>Email</th><th>Actions</th></tr>
-                </thead>
-                <tbody id="users-body"></tbody>
-            </table>
         </div>
 
         <div id="products" class="tab-content" style="display:none;">
-            <div style="display:flex; justify-content: space-between; align-items:center;">
-                <h2>Inventory</h2>
-                <button class="add-btn" onclick="openModal('productModal')">Add Product</button>
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="color: var(--primary-dark);">Product Inventory</h2>
+                <button class="add-btn" onclick="openModal('productModal')"><i class="fas fa-plus"></i> Add Product</button>
             </div>
             <table class="inventory-table">
                 <thead>
-                    <tr><th>Name</th><th>Category</th><th>Stock</th><th>Price</th><th>Actions</th></tr>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Size</th>
+                        <th>Stock</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
                 </thead>
-                <tbody id="inventory-body"></tbody>
+                <tbody id="inventory-table-body"></tbody>
             </table>
         </div>
 
-        <div id="sales" class="tab-content" style="display:none;"><h2>Sales history coming soon...</h2></div>
-        <div id="reports" class="tab-content" style="display:none;"><h2>Reports content coming soon...</h2></div>
-        <div id="settings" class="tab-content" style="display:none;"><h2>Settings content coming soon...</h2></div>
+        <div id="suppliers" class="tab-content" style="display:none;">
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="color: var(--primary-dark);">Supplier Management</h2>
+                <button class="add-btn" onclick="alert('Feature to add suppliers coming soon!')"><i class="fas fa-plus"></i> Add Supplier</button>
+            </div>
+            <div class="activity-section">
+                <p style="text-align:center; padding:40px; color:#999;">
+                    <i class="fas fa-truck-loading" style="font-size: 3rem; display:block; margin-bottom:15px; opacity:0.3;"></i>
+                    Manage your product suppliers and contact details here.
+                </p>
+            </div>
+        </div>
 
+        <div id="sales" class="tab-content" style="display:none;">
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="color: var(--primary-dark);">Sales History</h2>
+                <button class="add-btn" style="background: var(--accent-blue);" onclick="window.print()"><i class="fas fa-print"></i> Print Records</button>
+            </div>
+            <table class="inventory-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Product</th>
+                        <th>Qty Sold</th>
+                        <th>Method</th>
+                        <th>Total Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="sales-history-body"></tbody>
+            </table>
+        </div>
+
+        <div id="reports" class="tab-content" style="display:none;">
+            <h2 style="margin-bottom:20px;">Financial Reports</h2>
+            <div class="stats-grid">
+                <div class="card report-card cash">
+                    <span>Cash Revenue</span>
+                    <div id="report-cash" class="value">Ksh 0</div>
+                </div>
+                <div class="card report-card mpesa">
+                    <span>M-Pesa Revenue</span>
+                    <div id="report-mpesa" class="value">Ksh 0</div>
+                </div>
+                <div class="card report-card card-pay">
+                    <span>Card Revenue</span>
+                    <div id="report-card" class="value">Ksh 0</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="settings" class="tab-content" style="display:none;">
+            <h2 style="margin-bottom:20px;">System Settings</h2>
+            <div class="activity-section">
+                <p>Local configuration and user preferences.</p>
+            </div>
+        </div>
     </div>
 
-    <div id="userModal" class="modal">
+    <div id="productModal" class="modal">
         <div class="modal-content">
-            <h3 id="userModalTitle">Add System User</h3>
-            <form id="userForm">
-                <input type="hidden" id="editUserId">
-                <input type="text" id="uName" placeholder="Full Name" required>
-                <select id="uRole">
-                    <option value="Admin">Admin</option>
-                    <option value="Staff">Staff</option>
-                    <option value="Manager">Manager</option>
+            <h2>Add New Product</h2>
+            <form id="addProductForm">
+                <input type="text" id="pName" placeholder="Product Name" required>
+                <input type="text" id="pCat" placeholder="Category" required>
+                <input type="text" id="pSize" placeholder="Size (e.g. 500ml)" required>
+                <input type="number" id="pQty" placeholder="Quantity" required>
+                <input type="number" id="pPrice" placeholder="Price (Ksh)" required>
+                <button type="submit" class="add-btn" style="width:100%; margin-top:10px;">Save Product</button>
+                <button type="button" onclick="closeModal('productModal')" style="width:100%; background:#95a5a6; margin-top:5px;" class="add-btn">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="sellModal" class="modal">
+        <div class="modal-content">
+            <h2 id="sellTitle">Record Sale</h2>
+            <form id="sellForm">
+                <input type="hidden" id="sellProductId">
+                <label>Qty to Sell (Max: <span id="maxStock"></span>)</label>
+                <input type="number" id="sellQty" min="1" required>
+                <label>Payment Method</label>
+                <select id="sellMethod" required>
+                    <option value="Cash">Cash</option>
+                    <option value="M-Pesa">M-Pesa</option>
+                    <option value="Card">Card</option>
                 </select>
-                <input type="email" id="uEmail" placeholder="Email Address" required>
-                <button type="submit" class="add-btn" style="width:100%; background: var(--accent-blue);">Save User</button>
-                <button type="button" onclick="closeModal('userModal')" style="width:100%; background:#999; margin-top:5px;" class="add-btn">Cancel</button>
+                <button type="submit" class="add-btn" style="width:100%; margin-top:10px; background:var(--accent-blue);">Confirm</button>
+                <button type="button" onclick="closeModal('sellModal')" style="width:100%; background:#95a5a6; margin-top:5px;" class="add-btn">Cancel</button>
             </form>
         </div>
     </div>
 
     <script>
+        // --- DATA INITIALIZATION ---
         let products = JSON.parse(localStorage.getItem('products')) || [];
         let sales = JSON.parse(localStorage.getItem('sales')) || [];
-        let users = JSON.parse(localStorage.getItem('system_users')) || [];
 
-        function sync() {
+        // --- CORE FUNCTIONS ---
+        function syncData() {
             localStorage.setItem('products', JSON.stringify(products));
             localStorage.setItem('sales', JSON.stringify(sales));
-            localStorage.setItem('system_users', JSON.stringify(users));
-            render();
+            renderAll();
         }
 
-        // --- ENHANCED NAVIGATION LOGIC ---
-        function showTab(id, el) {
-            // Hide all
-            document.querySelectorAll('.tab-content').forEach(t => t.style.display='none');
-            // Show target
-            document.getElementById(id).style.display='block';
-            
-            // Sync active class for BOTH sidebar and top nav
-            document.querySelectorAll('.nav-item, .side-item').forEach(item => {
-                item.classList.remove('active');
-                if(item.getAttribute('data-tab') === id) {
-                    item.classList.add('active');
-                }
-            });
-        }
-
-        // --- USER CRUD ---
-        document.getElementById('userForm').onsubmit = (e) => {
+        document.getElementById('addProductForm').onsubmit = function(e) {
             e.preventDefault();
-            const editId = document.getElementById('editUserId').value;
-            const userData = {
-                id: editId || "U-" + Math.floor(Math.random()*9000),
-                name: document.getElementById('uName').value,
-                role: document.getElementById('uRole').value,
-                email: document.getElementById('uEmail').value
+            const newProduct = {
+                id: Date.now(),
+                name: document.getElementById('pName').value,
+                category: document.getElementById('pCat').value,
+                size: document.getElementById('pSize').value,
+                quantity: parseInt(document.getElementById('pQty').value),
+                price: parseFloat(document.getElementById('pPrice').value)
             };
-
-            if (editId) {
-                // Update existing
-                const index = users.findIndex(u => u.id === editId);
-                users[index] = userData;
-                showToast("User Updated");
-            } else {
-                // Add new
-                users.push(userData);
-                showToast("User Added");
-            }
-
-            closeModal('userModal');
-            sync();
+            products.push(newProduct);
+            this.reset();
+            closeModal('productModal');
+            syncData();
         };
 
-        function deleteUser(id) {
-            if(confirm("Delete this user?")) {
-                users = users.filter(u => u.id !== id);
-                sync();
+        document.getElementById('sellForm').onsubmit = function(e) {
+            e.preventDefault();
+            const id = parseInt(document.getElementById('sellProductId').value);
+            const qty = parseInt(document.getElementById('sellQty').value);
+            const method = document.getElementById('sellMethod').value;
+
+            const idx = products.findIndex(p => p.id === id);
+            if(products[idx].quantity >= qty) {
+                products[idx].quantity -= qty;
+                
+                const newSale = {
+                    id: Date.now(),
+                    pName: products[idx].name,
+                    qty: qty,
+                    method: method,
+                    total: products[idx].price * qty,
+                    date: new Date().toISOString()
+                };
+                sales.push(newSale);
+                closeModal('sellModal');
+                syncData();
+            } else {
+                alert("Not enough stock!");
+            }
+        };
+
+        function deleteProduct(id) {
+            if(confirm('Delete this product?')) {
+                products = products.filter(p => p.id !== id);
+                syncData();
             }
         }
 
-        function editUser(id) {
-            const u = users.find(x => x.id === id);
-            if(!u) return;
-
-            document.getElementById('userModalTitle').innerText = "Edit User";
-            document.getElementById('editUserId').value = u.id;
-            document.getElementById('uName').value = u.name;
-            document.getElementById('uRole').value = u.role;
-            document.getElementById('uEmail').value = u.email;
-
-            openModal('userModal');
+        // --- UI RENDERING ---
+        function renderAll() {
+            renderStats();
+            renderInventory();
+            renderSales();
+            renderRecentActivity();
+            renderReports();
         }
 
-        function openUserModal() {
-            document.getElementById('userForm').reset();
-            document.getElementById('editUserId').value = "";
-            document.getElementById('userModalTitle').innerText = "Add System User";
-            openModal('userModal');
-        }
-
-        // --- RENDERING ---
-        function render() {
-            // Stats
+        function renderStats() {
             document.getElementById('stat-total-products').innerText = products.length;
-            document.getElementById('stat-total-users').innerText = users.length;
-            const rev = sales.reduce((a,b) => a + (b.total || 0), 0);
-            document.getElementById('stat-total-revenue').innerText = "Ksh " + rev.toLocaleString();
+            const lowStockCount = products.filter(p => p.quantity < 10).length;
+            document.getElementById('stat-low-stock').innerText = lowStockCount;
+            const revenue = sales.reduce((sum, s) => sum + s.total, 0);
+            document.getElementById('stat-total-revenue').innerText = `Ksh ${revenue.toLocaleString()}`;
+        }
 
-            // Users Table with Search Filter
-            const searchTerm = document.getElementById('userSearch').value.toLowerCase();
-            const filteredUsers = users.filter(u => 
-                u.name.toLowerCase().includes(searchTerm) || 
-                u.email.toLowerCase().includes(searchTerm)
-            );
+        function renderInventory() {
+            const body = document.getElementById('inventory-table-body');
+            body.innerHTML = products.map(p => {
+                let statusClass = 'badge-success';
+                let statusText = 'In Stock';
+                if(p.quantity <= 0) { statusClass = 'badge-danger'; statusText = 'Out of Stock'; }
+                else if(p.quantity < 10) { statusClass = 'badge-warning'; statusText = 'Low Stock'; }
 
-            const userBody = document.getElementById('users-body');
-            userBody.innerHTML = filteredUsers.length > 0 ? filteredUsers.map(u => `
+                return `
+                    <tr>
+                        <td>#${p.id.toString().slice(-4)}</td>
+                        <td><strong>${p.name}</strong></td>
+                        <td>${p.category}</td>
+                        <td>${p.size}</td>
+                        <td>${p.quantity}</td>
+                        <td>Ksh ${p.price.toLocaleString()}</td>
+                        <td><span class="badge ${statusClass}">${statusText}</span></td>
+                        <td>
+                            <button onclick="openSellModal(${p.id}, '${p.name}', ${p.quantity})" style="color:var(--success-green); border:none; background:none; cursor:pointer; font-size:1.2rem; margin-right:10px;"><i class="fas fa-plus-circle"></i></button>
+                            <button onclick="deleteProduct(${p.id})" style="color:var(--danger-red); border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderSales() {
+            const body = document.getElementById('sales-history-body');
+            body.innerHTML = sales.slice().reverse().map(s => `
                 <tr>
-                    <td>${u.id}</td>
-                    <td><strong>${u.name}</strong></td>
-                    <td><span class="badge badge-info">${u.role}</span></td>
-                    <td>${u.email}</td>
-                    <td>
-                        <button onclick="editUser('${u.id}')" style="color:blue; border:none; background:none; cursor:pointer; margin-right:10px;"><i class="fas fa-edit"></i></button>
-                        <button onclick="deleteUser('${u.id}')" style="color:red; border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
-                    </td>
-                </tr>
-            `).join('') : `<tr><td colspan="5" style="text-align:center;">No users found</td></tr>`;
-
-            // Products Table
-            document.getElementById('inventory-body').innerHTML = products.map(p => `
-                <tr>
-                    <td>${p.name}</td>
-                    <td>${p.cat}</td>
-                    <td>${p.qty}</td>
-                    <td>${p.price}</td>
-                    <td><button onclick="products=products.filter(x=>x.id!=${p.id});sync();" style="color:red; border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button></td>
+                    <td>${new Date(s.date).toLocaleDateString()}</td>
+                    <td><strong>${s.pName}</strong></td>
+                    <td>${s.qty}</td>
+                    <td>${s.method}</td>
+                    <td style="color:var(--success-green); font-weight:bold;">Ksh ${s.total.toLocaleString()}</td>
                 </tr>
             `).join('');
         }
 
-        function openModal(id) { document.getElementById(id).style.display='block'; }
-        function closeModal(id) { document.getElementById(id).style.display='none'; }
-        
-        function showToast(m) {
-            const t = document.getElementById('toast');
-            t.innerText = m; t.style.display='block';
-            setTimeout(() => t.style.display='none', 3000);
+        function renderRecentActivity() {
+            const list = document.getElementById('recent-activity-list');
+            const recent = sales.slice(-5).reverse();
+            if(recent.length === 0) {
+                list.innerHTML = `<p style="text-align:center; padding:20px; color:#999;">No recent sales.</p>`;
+                return;
+            }
+            list.innerHTML = recent.map(s => `
+                <div class="activity-item">
+                    <div class="activity-icon"><i class="fas fa-receipt"></i></div>
+                    <div style="flex:1;">
+                        <span style="font-weight:600;">Sale:</span> Sold ${s.qty} units of <strong>${s.pName}</strong>.
+                        <br><small>Method: ${s.method} | Total: Ksh ${s.total.toLocaleString()}</small>
+                    </div>
+                    <div style="color:#999; font-size:0.8rem;">${new Date(s.date).getHours()}:${new Date(s.date).getMinutes()}</div>
+                </div>
+            `).join('');
         }
 
-        window.onload = render;
+        function renderReports() {
+            const calculate = (method) => sales.filter(s => s.method === method).reduce((sum, s) => sum + s.total, 0);
+            document.getElementById('report-cash').innerText = `Ksh ${calculate('Cash').toLocaleString()}`;
+            document.getElementById('report-mpesa').innerText = `Ksh ${calculate('M-Pesa').toLocaleString()}`;
+            document.getElementById('report-card').innerText = `Ksh ${calculate('Card').toLocaleString()}`;
+        }
+
+        // --- UTILS ---
+        function showTab(tabId, el) {
+            document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+            document.getElementById(tabId).style.display = 'block';
+            
+            document.querySelectorAll('.nav-item, .side-item').forEach(item => item.classList.remove('active'));
+            
+            // Highlight the active item in both sidebar and nav
+            document.querySelectorAll(`[onclick="showTab('${tabId}', this)"]`).forEach(item => item.classList.add('active'));
+        }
+
+        function openModal(id) { document.getElementById(id).style.display = 'block'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        function openSellModal(id, name, stock) {
+            document.getElementById('sellProductId').value = id;
+            document.getElementById('sellTitle').innerText = "Sell: " + name;
+            document.getElementById('maxStock').innerText = stock;
+            document.getElementById('sellQty').max = stock;
+            openModal('sellModal');
+        }
+
+        function logout() {
+            if(confirm("Logout? (This will refresh the page in this local version)")) {
+                window.location.reload();
+            }
+        }
+
+        window.onload = renderAll;
     </script>
 </body>
 </html>
