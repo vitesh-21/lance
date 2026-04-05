@@ -179,7 +179,7 @@
 </div>
 
 <script>
-    let cart = [];
+   let cart = [];
     let total = 0;
 
     function getLatestData() {
@@ -273,7 +273,7 @@
             saleId: "POS-" + Date.now(),
             date: new Date().toLocaleString(),
             pName: cart.map(i => i.name).join(", "),
-            items: cart,
+            items: [...cart], // Deep copy the cart
             total: total,
             method: payment,
             code: refCode
@@ -283,30 +283,41 @@
         localStorage.setItem('products', JSON.stringify(products));
         localStorage.setItem('sales', JSON.stringify(sales));
 
-        // TRIGGER RECEIPT PRINTING
+        // 1. Fill the receipt HTML
         generateReceipt(saleObj);
         
-        // Reset POS
+        // 2. Clear internal POS data first
+        const oldCart = [...cart];
         cart = [];
         total = 0;
         updateCartUI();
         loadProducts();
+
+        // 3. Trigger Print with a small delay to ensure DOM is ready
+        setTimeout(() => {
+            window.print();
+        }, 250);
     }
 
     function generateReceipt(sale) {
         document.getElementById("receipt-details").innerHTML = `
-            ID: ${sale.saleId}<br>
-            Pay: ${sale.method} ${sale.code ? '('+sale.code+')' : ''}
+            <strong>Order ID:</strong> ${sale.saleId}<br>
+            <strong>Payment:</strong> ${sale.method} ${sale.code ? '['+sale.code+']' : ''}
         `;
-        document.getElementById("receipt-items").innerHTML = sale.items.map(i => 
-            `<div>${i.name} x${i.qty} @${i.price} <span style="float:right">${i.total}</span></div>`
+        
+        let itemsHtml = sale.items.map(i => 
+            `<div style="display:flex; justify-content:space-between; margin: 5px 0;">
+                <span>${i.name} x${i.qty}</span>
+                <span>${i.total.toFixed(2)}</span>
+            </div>`
         ).join('');
-        document.getElementById("receipt-total").innerText = `TOTAL: Ksh ${sale.total.toLocaleString()}`;
+        
+        document.getElementById("receipt-items").innerHTML = itemsHtml;
+        document.getElementById("receipt-total").innerText = `GRAND TOTAL: Ksh ${sale.total.toLocaleString()}`;
         document.getElementById("receipt-date").innerText = sale.date;
-
-        window.print(); // Triggers the print dialog
     }
 
+    // Auto-refresh logic
     window.addEventListener('storage', (e) => {
         if (e.key === 'products') loadProducts();
     });
