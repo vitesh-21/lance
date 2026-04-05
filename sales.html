@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS Checkout System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        body {
+            background: #000;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #00ff66;
+            margin: 0;
+        }
+        .terminal-card {
+            width: 450px;
+            border: 2px solid #00ff66;
+            padding: 20px;
+            background: #000;
+            box-shadow: 0 0 20px #00ff66;
+        }
+        header h2 {
+            text-align: center;
+            margin-bottom: 15px;
+            border-bottom: 1px dashed #00ff66;
+            padding-bottom: 10px;
+        }
+        .input-group {
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        label { width: 40%; }
+        select, input {
+            width: 55%;
+            background: #000;
+            border: 1px solid #00ff66;
+            color: #00ff66;
+            padding: 8px;
+            outline: none;
+        }
+        .auto-field { border: 1px solid #00ff66; padding: 6px 10px; flex: 1; margin-left: 10px; text-align: center; }
+        .add-btn {
+            margin-top: 10px;
+            width: 100%;
+            background: #000;
+            border: 1px solid #00ff66;
+            color: #00ff66;
+            padding: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .add-btn:hover { background: #00ff66; color: #000; }
+        .cart-section {
+            margin-top: 15px;
+            border-top: 1px dashed #00ff66;
+            padding-top: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        #cartList div { border-bottom: 1px solid #003311; padding: 5px 0; font-size: 0.9rem; }
+        .total-section { margin-top: 15px; font-size: 1.2rem; font-weight: bold; text-align: right; }
+        .confirm-btn {
+            margin-top: 15px;
+            width: 100%;
+            background: #00ff66;
+            border: none;
+            padding: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .confirm-btn:hover { background: #00cc55; }
+        #phoneGroup { display: none; }
+        
+        /* Hidden Receipt for Printing */
+        #receipt { display: none; color: #000; background: white; padding: 20px; font-family: monospace; }
+    </style>
+</head>
+<body>
+
+<div class="terminal-card">
+    <header>
+        <h2><i class="fas fa-cash-register"></i> TERMINAL_POS v2.0</h2>
+    </header>
+
+    <main>
+        <div class="input-group">
+            <label>Product:</label>
+            <select id="productSelect" onchange="updatePriceDisplay()">
+                <option value="" disabled selected>-- Select Item --</option>
+                </select>
+        </div>
+
+        <div class="input-group">
+            <label>Quantity:</label>
+            <input type="number" id="qtyInput" min="1" value="1">
+        </div>
+
+        <div class="input-group">
+            <label>Price/Unit:</label>
+            <span id="priceDisplay" class="auto-field">0.00</span>
+        </div>
+
+        <div class="input-group">
+            <label>Pay Method:</label>
+            <select id="paymentMethod" onchange="togglePhoneInput()">
+                <option value="Cash">Cash</option>
+                <option value="M-Pesa">M-Pesa</option>
+                <option value="Bank">Bank Transfer</option>
+            </select>
+        </div>
+
+        <div class="input-group" id="phoneGroup">
+            <label>M-Pesa No:</label>
+            <input type="text" id="mpesaPhone" placeholder="2547XXXXXXXX">
+        </div>
+
+        <button class="add-btn" onclick="addToCart()">
+            <i class="fas fa-cart-plus"></i> + Add to Cart
+        </button>
+
+        <div class="cart-section">
+            <p><strong><i class="fas fa-list"></i> CURRENT BATCH</strong></p>
+            <div id="cartList"></div>
+        </div>
+
+        <div class="total-section">
+            TOTAL: Ksh <span id="grandTotal">0</span>
+        </div>
+
+        <button class="confirm-btn" onclick="confirmSale()">
+            <i class="fas fa-check-circle"></i> [ PROCESS TRANSACTION ]
+        </button>
+    </main>
+</div>
+
+<script>
+    // Initialize data from LocalStorage (Syncs with your Admin Dashboard)
+    let products = JSON.parse(localStorage.getItem('products')) || [];
+    let sales = JSON.parse(localStorage.getItem('sales')) || [];
+    let cart = [];
+    let total = 0;
+
+    // Load available products into the dropdown
+    function loadProducts() {
+        const select = document.getElementById("productSelect");
+        select.innerHTML = '<option value="" disabled selected>-- Select Item --</option>';
+        
+        products.forEach(p => {
+            if(p.qty > 0) {
+                let opt = document.createElement("option");
+                opt.value = p.id;
+                opt.text = `${p.name} (Stock: ${p.qty})`;
+                opt.dataset.price = p.price;
+                opt.dataset.stock = p.qty;
+                select.appendChild(opt);
+            }
+        });
+    }
+
+    function togglePhoneInput() {
+        let method = document.getElementById("paymentMethod").value;
+        document.getElementById("phoneGroup").style.display = (method === "M-Pesa") ? "flex" : "none";
+    }
+
+    function updatePriceDisplay(){
+        let select = document.getElementById("productSelect");
+        let price = select.options[select.selectedIndex].dataset.price;
+        document.getElementById("priceDisplay").innerText = price;
+    }
+
+    function addToCart(){
+        let select = document.getElementById("productSelect");
+        let qty = parseInt(document.getElementById("qtyInput").value);
+
+        if(!select.value) { alert("Please select a product"); return; }
+        
+        let stock = parseInt(select.options[select.selectedIndex].dataset.stock);
+        let name = select.options[select.selectedIndex].text.split(' (')[0];
+        let price = parseFloat(select.options[select.selectedIndex].dataset.price);
+
+        if(qty > stock) {
+            alert("Error: Insufficient stock!");
+            return;
+        }
+
+        let itemTotal = price * qty;
+        cart.push({ id: select.value, name: name, qty: qty, price: price, total: itemTotal });
+        
+        total += itemTotal;
+        updateCartUI();
+    }
+
+    function updateCartUI(){
+        let cartDiv = document.getElementById("cartList");
+        cartDiv.innerHTML = cart.map(item => `
+            <div>${item.name} x${item.qty} <span style="float:right">Ksh ${item.total}</span></div>
+        `).join('');
+        document.getElementById("grandTotal").innerText = total.toLocaleString();
+    }
+
+    function confirmSale(){
+        if(cart.length === 0) { alert("Cart is empty!"); return; }
+
+        let payment = document.getElementById("paymentMethod").value;
+        let mpesaCode = "";
+
+        if(payment === "M-Pesa") {
+            mpesaCode = prompt("Enter M-Pesa Transaction Code:");
+            if(!mpesaCode) return;
+        }
+
+        // 1. Process Stock Deductions
+        cart.forEach(cartItem => {
+            let pIndex = products.findIndex(p => p.id == cartItem.id);
+            if(pIndex !== -1) {
+                products[pIndex].qty -= cartItem.qty; // Subtract stock
+            }
+        });
+
+        // 2. Create Sale Record
+        let newSale = {
+            saleId: "S-" + Date.now(),
+            date: new Date().toLocaleString(),
+            items: cart,
+            total: total,
+            payment: payment,
+            code: mpesaCode
+        };
+        sales.push(newSale);
+
+        // 3. Save to LocalStorage
+        localStorage.setItem('products', JSON.stringify(products));
+        localStorage.setItem('sales', JSON.stringify(sales));
+
+        alert("✅ TRANSACTION SUCCESSFUL!\nStock Updated & Sale Recorded.");
+        
+        // Print and Reset
+        printReceipt(newSale);
+        location.reload();
+    }
+
+    function printReceipt(sale) {
+        let itemsHtml = sale.items.map(i => `<p>${i.name} x${i.qty} @ ${i.price} = ${i.total}</p>`).join('');
+        let newWindow = window.open("", "", "width=300,height=600");
+        newWindow.document.write(`
+            <html>
+            <body style="font-family:monospace; text-align:center;">
+                <h3>SMART SHOP POS</h3>
+                <p>${sale.date}</p>
+                <hr>
+                ${itemsHtml}
+                <hr>
+                <h4>TOTAL: Ksh ${sale.total}</h4>
+                <p>Payment: ${sale.payment} ${sale.code ? '('+sale.code+')' : ''}</p>
+                <p>--- THANK YOU ---</p>
+                <script>window.onload = function() { window.print(); window.close(); }<\/script>
+            </body>
+            </html>
+        `);
+    }
+
+    // Startup
+    window.onload = loadProducts;
+</script>
+</body>
+</html>
