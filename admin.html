@@ -477,7 +477,7 @@
             document.getElementById('report-mpesa').innerText = `Ksh ${calculate('M-Pesa').toLocaleString()}`;
             document.getElementById('report-card').innerText = `Ksh ${calculate('Card').toLocaleString()}`;
 
-            // Calculate Top Selling Products
+            // Calculate Top Selling Products Logic
             const productSales = {};
             sales.forEach(sale => {
                 if (!productSales[sale.pName]) {
