@@ -357,255 +357,272 @@
         </div>
     </div>
 
-    <script>
-        // --- DATA INITIALIZATION ---
-        let products = JSON.parse(localStorage.getItem('products')) || [];
-        let sales = JSON.parse(localStorage.getItem('sales')) || [];
-        let suppliers = JSON.parse(localStorage.getItem('suppliers')) || [];
+   <script>
+    // --- 1. DATA INITIALIZATION & POS SYNC ---
+    // We use 'products' (lowercase) to match the POS system requirements
+    let products = JSON.parse(localStorage.getItem('products')) || [];
+    let sales = JSON.parse(localStorage.getItem('sales')) || [];
+    let suppliers = JSON.parse(localStorage.getItem('suppliers')) || [];
 
-        // --- CORE FUNCTIONS ---
-        function syncData() {
-            localStorage.setItem('products', JSON.stringify(products));
-            localStorage.setItem('sales', JSON.stringify(sales));
-            localStorage.setItem('suppliers', JSON.stringify(suppliers));
+    // --- 2. CORE SYNC FUNCTIONS ---
+    function syncData() {
+        localStorage.setItem('products', JSON.stringify(products));
+        localStorage.setItem('sales', JSON.stringify(sales));
+        localStorage.setItem('suppliers', JSON.stringify(suppliers));
+        renderAll();
+    }
+
+    // LISTENER: If POS makes a sale in another tab, update Admin immediately
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'products' || e.key === 'sales') {
+            products = JSON.parse(localStorage.getItem('products')) || [];
+            sales = JSON.parse(localStorage.getItem('sales')) || [];
             renderAll();
         }
+    });
 
-        // --- PRODUCT LOGIC ---
-        document.getElementById('addProductForm').onsubmit = function(e) {
-            e.preventDefault();
-            const newProduct = {
-                id: Date.now(),
-                name: document.getElementById('pName').value,
-                category: document.getElementById('pCat').value,
-                size: document.getElementById('pSize').value,
-                quantity: parseInt(document.getElementById('pQty').value),
-                price: parseFloat(document.getElementById('pPrice').value)
-            };
-            products.push(newProduct);
-            this.reset();
-            closeModal('productModal');
+    // --- 3. PRODUCT LOGIC (COMPATIBLE WITH POS) ---
+    document.getElementById('addProductForm').onsubmit = function(e) {
+        e.preventDefault();
+        const newProduct = {
+            id: Date.now(), // POS uses this as value
+            name: document.getElementById('pName').value,
+            category: document.getElementById('pCat').value,
+            size: document.getElementById('pSize').value,
+            quantity: parseInt(document.getElementById('pQty').value), // Admin UI uses this
+            qty: parseInt(document.getElementById('pQty').value),      // POS Terminal looks for 'qty'
+            price: parseFloat(document.getElementById('pPrice').value)
+        };
+        products.push(newProduct);
+        this.reset();
+        closeModal('productModal');
+        syncData();
+    };
+
+    function deleteProduct(id) {
+        if(confirm('Delete this product?')) {
+            products = products.filter(p => p.id !== id);
             syncData();
-        };
-
-        function deleteProduct(id) {
-            if(confirm('Delete this product?')) {
-                products = products.filter(p => p.id !== id);
-                syncData();
-            }
         }
+    }
 
-        // --- SUPPLIER LOGIC (NEW FEATURE INTEGRATED) ---
-        document.getElementById('addSupplierForm').onsubmit = function(e) {
-            e.preventDefault();
-            const newSupplier = {
-                id: Date.now(),
-                name: document.getElementById('sName').value,
-                contact: document.getElementById('sContact').value,
-                phone: document.getElementById('sPhone').value,
-                category: document.getElementById('sCat').value,
-                status: "Active"
-            };
-            suppliers.push(newSupplier);
-            this.reset();
-            closeModal('supplierModal');
+    // --- 4. SUPPLIER LOGIC ---
+    document.getElementById('addSupplierForm').onsubmit = function(e) {
+        e.preventDefault();
+        const newSupplier = {
+            id: Date.now(),
+            name: document.getElementById('sName').value,
+            contact: document.getElementById('sContact').value,
+            phone: document.getElementById('sPhone').value,
+            category: document.getElementById('sCat').value,
+            status: "Active"
+        };
+        suppliers.push(newSupplier);
+        this.reset();
+        closeModal('supplierModal');
+        syncData();
+    };
+
+    function deleteSupplier(id) {
+        if(confirm('Delete this supplier?')) {
+            suppliers = suppliers.filter(s => s.id !== id);
             syncData();
-        };
-
-        function deleteSupplier(id) {
-            if(confirm('Delete this supplier?')) {
-                suppliers = suppliers.filter(s => s.id !== id);
-                syncData();
-            }
         }
+    }
 
-        // --- SALES LOGIC ---
-        document.getElementById('sellForm').onsubmit = function(e) {
-            e.preventDefault();
-            const id = parseInt(document.getElementById('sellProductId').value);
-            const qty = parseInt(document.getElementById('sellQty').value);
-            const method = document.getElementById('sellMethod').value;
+    // --- 5. SALES LOGIC (INTERNAL ADMIN RECORDER) ---
+    document.getElementById('sellForm').onsubmit = function(e) {
+        e.preventDefault();
+        const id = parseInt(document.getElementById('sellProductId').value);
+        const qtyToSell = parseInt(document.getElementById('sellQty').value);
+        const method = document.getElementById('sellMethod').value;
 
-            const idx = products.findIndex(p => p.id === id);
-            if(products[idx].quantity >= qty) {
-                products[idx].quantity -= qty;
-                
-                const newSale = {
-                    id: Date.now(),
-                    pName: products[idx].name,
-                    qty: qty,
-                    method: method,
-                    total: products[idx].price * qty,
-                    date: new Date().toISOString()
-                };
-                sales.push(newSale);
-                closeModal('sellModal');
-                syncData();
-            } else {
-                alert("Not enough stock!");
-            }
-        };
-
-        // --- UI RENDERING ---
-        function renderAll() {
-            renderStats();
-            renderInventory();
-            renderSuppliers();
-            renderSales();
-            renderRecentActivity();
-            renderReports();
+        const idx = products.findIndex(p => p.id === id);
+        if(idx !== -1 && (products[idx].quantity || products[idx].qty) >= qtyToSell) {
+            
+            // Deduct from both keys to keep Admin/POS in sync
+            if(products[idx].quantity !== undefined) products[idx].quantity -= qtyToSell;
+            if(products[idx].qty !== undefined) products[idx].qty -= qtyToSell;
+            
+            const newSale = {
+                saleId: "ADM-" + Date.now(),
+                pName: products[idx].name,
+                qty: qtyToSell,
+                method: method,
+                total: products[idx].price * qtyToSell,
+                date: new Date().toLocaleString(),
+                code: method === "M-Pesa" ? "ADMIN-ENTRY" : ""
+            };
+            sales.push(newSale);
+            closeModal('sellModal');
+            syncData();
+        } else {
+            alert("Not enough stock!");
         }
+    };
 
-        function renderStats() {
-            document.getElementById('stat-total-products').innerText = products.length;
-            const lowStockCount = products.filter(p => p.quantity < 10).length;
-            document.getElementById('stat-low-stock').innerText = lowStockCount;
-            const revenue = sales.reduce((sum, s) => sum + s.total, 0);
-            document.getElementById('stat-total-revenue').innerText = `Ksh ${revenue.toLocaleString()}`;
-        }
+    // --- 6. UI RENDERING ---
+    function renderAll() {
+        renderStats();
+        renderInventory();
+        renderSuppliers();
+        renderSales();
+        renderRecentActivity();
+        renderReports();
+    }
 
-        function renderInventory() {
-            const body = document.getElementById('inventory-table-body');
-            body.innerHTML = products.map(p => {
-                let statusClass = 'badge-success';
-                let statusText = 'In Stock';
-                if(p.quantity <= 0) { statusClass = 'badge-danger'; statusText = 'Out of Stock'; }
-                else if(p.quantity < 10) { statusClass = 'badge-warning'; statusText = 'Low Stock'; }
+    function renderStats() {
+        document.getElementById('stat-total-products').innerText = products.length;
+        // Check both possible keys for stock
+        const lowStockCount = products.filter(p => (p.quantity || p.qty || 0) < 10).length;
+        document.getElementById('stat-low-stock').innerText = lowStockCount;
+        const revenue = sales.reduce((sum, s) => sum + s.total, 0);
+        document.getElementById('stat-total-revenue').innerText = `Ksh ${revenue.toLocaleString()}`;
+    }
 
-                return `
-                    <tr>
-                        <td>#${p.id.toString().slice(-4)}</td>
-                        <td><strong>${p.name}</strong></td>
-                        <td>${p.category}</td>
-                        <td>${p.size}</td>
-                        <td>${p.quantity}</td>
-                        <td>Ksh ${p.price.toLocaleString()}</td>
-                        <td><span class="badge ${statusClass}">${statusText}</span></td>
-                        <td>
-                            <button onclick="openSellModal(${p.id}, '${p.name}', ${p.quantity})" style="color:var(--success-green); border:none; background:none; cursor:pointer; font-size:1.2rem; margin-right:10px;"><i class="fas fa-plus-circle"></i></button>
-                            <button onclick="deleteProduct(${p.id})" style="color:var(--danger-red); border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
+    function renderInventory() {
+        const body = document.getElementById('inventory-table-body');
+        body.innerHTML = products.map(p => {
+            const currentStock = p.quantity !== undefined ? p.quantity : p.qty;
+            let statusClass = 'badge-success';
+            let statusText = 'In Stock';
+            if(currentStock <= 0) { statusClass = 'badge-danger'; statusText = 'Out of Stock'; }
+            else if(currentStock < 10) { statusClass = 'badge-warning'; statusText = 'Low Stock'; }
 
-        function renderSuppliers() {
-            const body = document.getElementById('supplier-table-body');
-            if (suppliers.length === 0) {
-                body.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#999;">No suppliers added yet.</td></tr>`;
-                return;
-            }
-            body.innerHTML = suppliers.map(s => `
+            return `
                 <tr>
-                    <td><strong>${s.name}</strong></td>
-                    <td>${s.contact}</td>
-                    <td>${s.phone}</td>
-                    <td>${s.category}</td>
-                    <td><span class="badge badge-success">${s.status}</span></td>
+                    <td>#${p.id.toString().slice(-4)}</td>
+                    <td><strong>${p.name}</strong></td>
+                    <td>${p.category}</td>
+                    <td>${p.size}</td>
+                    <td>${currentStock}</td>
+                    <td>Ksh ${p.price.toLocaleString()}</td>
+                    <td><span class="badge ${statusClass}">${statusText}</span></td>
                     <td>
-                        <button onclick="deleteSupplier(${s.id})" style="color:var(--danger-red); border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
+                        <button onclick="openSellModal(${p.id}, '${p.name}', ${currentStock})" style="color:var(--success-green); border:none; background:none; cursor:pointer; font-size:1.2rem; margin-right:10px;"><i class="fas fa-plus-circle"></i></button>
+                        <button onclick="deleteProduct(${p.id})" style="color:var(--danger-red); border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
                     </td>
                 </tr>
-            `).join('');
-        }
+            `;
+        }).join('');
+    }
 
-        function renderSales() {
-            const body = document.getElementById('sales-history-body');
-            body.innerHTML = sales.slice().reverse().map(s => `
+    function renderSuppliers() {
+        const body = document.getElementById('supplier-table-body');
+        if (suppliers.length === 0) {
+            body.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#999;">No suppliers added yet.</td></tr>`;
+            return;
+        }
+        body.innerHTML = suppliers.map(s => `
+            <tr>
+                <td><strong>${s.name}</strong></td>
+                <td>${s.contact}</td>
+                <td>${s.phone}</td>
+                <td>${s.category}</td>
+                <td><span class="badge badge-success">${s.status}</span></td>
+                <td>
+                    <button onclick="deleteSupplier(${s.id})" style="color:var(--danger-red); border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function renderSales() {
+        const body = document.getElementById('sales-history-body');
+        // Handle both Admin and POS sale formats
+        body.innerHTML = sales.slice().reverse().map(s => {
+            const displayName = s.pName || (s.items ? s.items.map(i => i.name).join(', ') : "Unknown");
+            const displayMethod = s.method || s.payment || "N/A";
+            const displayDate = s.date.includes('T') ? new Date(s.date).toLocaleDateString() : s.date;
+            
+            return `
                 <tr>
-                    <td>${new Date(s.date).toLocaleDateString()}</td>
-                    <td><strong>${s.pName}</strong></td>
-                    <td>${s.qty}</td>
-                    <td>${s.method}</td>
+                    <td>${displayDate}</td>
+                    <td><strong>${displayName}</strong></td>
+                    <td>${s.qty || (s.items ? s.items.reduce((a,b)=>a+b.qty,0) : 1)}</td>
+                    <td>${displayMethod}</td>
                     <td style="color:var(--success-green); font-weight:bold;">Ksh ${s.total.toLocaleString()}</td>
                 </tr>
-            `).join('');
-        }
+            `;
+        }).join('');
+    }
 
-        function renderRecentActivity() {
-            const list = document.getElementById('recent-activity-list');
-            const recent = sales.slice(-5).reverse();
-            if(recent.length === 0) {
-                list.innerHTML = `<p style="text-align:center; padding:20px; color:#999;">No recent sales.</p>`;
-                return;
-            }
-            list.innerHTML = recent.map(s => `
+    function renderRecentActivity() {
+        const list = document.getElementById('recent-activity-list');
+        const recent = sales.slice(-5).reverse();
+        if(recent.length === 0) {
+            list.innerHTML = `<p style="text-align:center; padding:20px; color:#999;">No recent sales.</p>`;
+            return;
+        }
+        list.innerHTML = recent.map(s => {
+            const name = s.pName || (s.items ? s.items[0].name + "..." : "Item");
+            return `
                 <div class="activity-item">
                     <div class="activity-icon"><i class="fas fa-receipt"></i></div>
                     <div style="flex:1;">
-                        <span style="font-weight:600;">Sale:</span> Sold ${s.qty} units of <strong>${s.pName}</strong>.
-                        <br><small>Method: ${s.method} | Total: Ksh ${s.total.toLocaleString()}</small>
+                        <span style="font-weight:600;">Sale:</span> ${name}
+                        <br><small>Method: ${s.method || s.payment} | Total: Ksh ${s.total.toLocaleString()}</small>
                     </div>
-                    <div style="color:#999; font-size:0.8rem;">${new Date(s.date).getHours()}:${new Date(s.date).getMinutes()}</div>
                 </div>
-            `).join('');
-        }
+            `;
+        }).join('');
+    }
 
-        function renderReports() {
-            const calculate = (method) => sales.filter(s => s.method === method).reduce((sum, s) => sum + s.total, 0);
-            document.getElementById('report-cash').innerText = `Ksh ${calculate('Cash').toLocaleString()}`;
-            document.getElementById('report-mpesa').innerText = `Ksh ${calculate('M-Pesa').toLocaleString()}`;
-            document.getElementById('report-card').innerText = `Ksh ${calculate('Card').toLocaleString()}`;
+    function renderReports() {
+        const calc = (m) => sales.filter(s => (s.method === m || s.payment === m)).reduce((sum, s) => sum + s.total, 0);
+        document.getElementById('report-cash').innerText = `Ksh ${calc('Cash').toLocaleString()}`;
+        document.getElementById('report-mpesa').innerText = `Ksh ${calc('M-Pesa').toLocaleString()}`;
+        document.getElementById('report-card').innerText = `Ksh ${calc('Card').toLocaleString()}`;
 
-            const productSales = {};
-            sales.forEach(sale => {
-                if (!productSales[sale.pName]) {
-                    productSales[sale.pName] = { units: 0, earned: 0 };
-                }
-                productSales[sale.pName].units += sale.qty;
-                productSales[sale.pName].earned += sale.total;
-            });
-
-            const sortedProducts = Object.entries(productSales).sort((a, b) => b[1].units - a[1].units);
-            const topSellingBody = document.getElementById('top-selling-body');
-            
-            if (sortedProducts.length === 0) {
-                topSellingBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#999;">No sales data yet.</td></tr>`;
-            } else {
-                topSellingBody.innerHTML = sortedProducts.map(([name, data]) => `
-                    <tr>
-                        <td><strong>${name}</strong></td>
-                        <td>${data.units}</td>
-                        <td class="text-success-bold">Ksh ${data.earned.toLocaleString()}</td>
-                    </tr>
-                `).join('');
+        // Top Selling Logic
+        const productSales = {};
+        sales.forEach(sale => {
+            if(sale.items) { // POS Format
+                sale.items.forEach(item => {
+                    productSales[item.name] = (productSales[item.name] || 0) + item.qty;
+                });
+            } else if (sale.pName) { // Admin Format
+                productSales[sale.pName] = (productSales[sale.pName] || 0) + sale.qty;
             }
+        });
+
+        const sorted = Object.entries(productSales).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        document.getElementById('top-selling-body').innerHTML = sorted.map(([name, qty]) => `
+            <tr>
+                <td><strong>${name}</strong></td>
+                <td>${qty} units</td>
+                <td class="text-success-bold">Verified Sale</td>
+            </tr>
+        `).join('') || `<tr><td colspan="3" style="text-align:center;">No data</td></tr>`;
+    }
+
+    // --- 7. UTILS ---
+    function showTab(tabId, el) {
+        document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+        document.getElementById(tabId).style.display = 'block';
+        document.querySelectorAll('.nav-item, .side-item').forEach(item => item.classList.remove('active'));
+        document.querySelectorAll(`[onclick="showTab('${tabId}', this)"]`).forEach(item => item.classList.add('active'));
+    }
+
+    function openModal(id) { document.getElementById(id).style.display = 'block'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function openSellModal(id, name, stock) {
+        document.getElementById('sellProductId').value = id;
+        document.getElementById('sellTitle').innerText = "Sell: " + name;
+        document.getElementById('maxStock').innerText = stock;
+        document.getElementById('sellQty').max = stock;
+        openModal('sellModal');
+    }
+
+    function clearAllData() {
+        if(confirm("DANGER: This will delete ALL data. Proceed?")) {
+            localStorage.clear();
+            location.reload();
         }
+    }
 
-        // --- UTILS ---
-        function showTab(tabId, el) {
-            document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
-            document.getElementById(tabId).style.display = 'block';
-            document.querySelectorAll('.nav-item, .side-item').forEach(item => item.classList.remove('active'));
-            document.querySelectorAll(`[onclick="showTab('${tabId}', this)"]`).forEach(item => item.classList.add('active'));
-        }
+    function logout() { location.reload(); }
 
-        function openModal(id) { document.getElementById(id).style.display = 'block'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-        function openSellModal(id, name, stock) {
-            document.getElementById('sellProductId').value = id;
-            document.getElementById('sellTitle').innerText = "Sell: " + name;
-            document.getElementById('maxStock').innerText = stock;
-            document.getElementById('sellQty').max = stock;
-            openModal('sellModal');
-        }
-
-        function clearAllData() {
-            if(confirm("DANGER: This will delete ALL products, sales, and suppliers. Proceed?")) {
-                localStorage.clear();
-                location.reload();
-            }
-        }
-
-        function logout() {
-            if(confirm("Logout? (This will refresh the page in this local version)")) {
-                window.location.reload();
-            }
-        }
-
-        window.onload = renderAll;
-    </script>
-</body>
-</html>
+    window.onload = renderAll;
+</script>
