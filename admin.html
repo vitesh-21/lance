@@ -135,7 +135,10 @@
         .add-btn { background: var(--success-green); color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         .add-btn:hover { background: #219150; transform: translateY(-1px); }
 
-        .alert-toast { position: fixed; top: 20px; right: 20px; background: var(--success-green); color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 1001; display: none; }
+        /* NEW STYLES FOR UPDATED REPORTS */
+        .report-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .export-btn { background: var(--accent-blue); color: white; padding: 10px 20px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
+        .text-success-bold { color: #27ae60; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -255,20 +258,38 @@
         </div>
 
         <div id="reports" class="tab-content" style="display:none;">
-            <h2 style="margin-bottom:20px;">Financial Reports</h2>
+            <div class="report-header-flex">
+                <h2 style="color: var(--primary-dark);">Financial Reports</h2>
+                <button class="export-btn" onclick="window.print()"><i class="fas fa-file-export"></i> Export Report</button>
+            </div>
+
             <div class="stats-grid">
                 <div class="card report-card cash">
-                    <span>Cash Revenue</span>
-                    <div id="report-cash" class="value">Ksh 0</div>
+                    <h3 style="color: #7f8c8d; font-size: 0.75rem;">CASH REVENUE</h3>
+                    <div id="report-cash" class="value" style="margin-top:10px;">Ksh 0</div>
                 </div>
                 <div class="card report-card mpesa">
-                    <span>M-Pesa Revenue</span>
-                    <div id="report-mpesa" class="value">Ksh 0</div>
+                    <h3 style="color: #7f8c8d; font-size: 0.75rem;">M-PESA REVENUE</h3>
+                    <div id="report-mpesa" class="value" style="margin-top:10px;">Ksh 0</div>
                 </div>
                 <div class="card report-card card-pay">
-                    <span>Card Revenue</span>
-                    <div id="report-card" class="value">Ksh 0</div>
+                    <h3 style="color: #7f8c8d; font-size: 0.75rem;">CARD REVENUE</h3>
+                    <div id="report-card" class="value" style="margin-top:10px;">Ksh 0</div>
                 </div>
+            </div>
+
+            <div class="activity-section" style="margin-top: 30px;">
+                <h3 style="margin-bottom: 15px; color: var(--primary-dark);">Top Selling Products</h3>
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Units Sold</th>
+                            <th>Total Earned</th>
+                        </tr>
+                    </thead>
+                    <tbody id="top-selling-body"></tbody>
+                </table>
             </div>
         </div>
 
@@ -455,16 +476,38 @@
             document.getElementById('report-cash').innerText = `Ksh ${calculate('Cash').toLocaleString()}`;
             document.getElementById('report-mpesa').innerText = `Ksh ${calculate('M-Pesa').toLocaleString()}`;
             document.getElementById('report-card').innerText = `Ksh ${calculate('Card').toLocaleString()}`;
+
+            // Calculate Top Selling Products
+            const productSales = {};
+            sales.forEach(sale => {
+                if (!productSales[sale.pName]) {
+                    productSales[sale.pName] = { units: 0, earned: 0 };
+                }
+                productSales[sale.pName].units += sale.qty;
+                productSales[sale.pName].earned += sale.total;
+            });
+
+            const sortedProducts = Object.entries(productSales).sort((a, b) => b[1].units - a[1].units);
+            const topSellingBody = document.getElementById('top-selling-body');
+            
+            if (sortedProducts.length === 0) {
+                topSellingBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#999;">No sales data yet.</td></tr>`;
+            } else {
+                topSellingBody.innerHTML = sortedProducts.map(([name, data]) => `
+                    <tr>
+                        <td><strong>${name}</strong></td>
+                        <td>${data.units}</td>
+                        <td class="text-success-bold">Ksh ${data.earned.toLocaleString()}</td>
+                    </tr>
+                `).join('');
+            }
         }
 
         // --- UTILS ---
         function showTab(tabId, el) {
             document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
             document.getElementById(tabId).style.display = 'block';
-            
             document.querySelectorAll('.nav-item, .side-item').forEach(item => item.classList.remove('active'));
-            
-            // Highlight the active item in both sidebar and nav
             document.querySelectorAll(`[onclick="showTab('${tabId}', this)"]`).forEach(item => item.classList.add('active'));
         }
 
