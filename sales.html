@@ -111,7 +111,7 @@
             <select id="paymentMethod" onchange="togglePhoneInput()">
                 <option value="Cash">Cash</option>
                 <option value="M-Pesa">M-Pesa</option>
-                <option value="Bank">Bank Transfer</option>
+                <option value="Card">Bank Card</option>
             </select>
         </div>
 
@@ -143,11 +143,10 @@
     let cart = [];
     let total = 0;
 
-    // 1. REFRESH DATA FROM STORAGE
+    // 1. DATA SYNC - Get latest from Admin storage
     function getLatestData() {
         return {
-            // Checks for 'products' or 'Products' just in case
-            products: JSON.parse(localStorage.getItem('products') || localStorage.getItem('Products')) || [],
+            products: JSON.parse(localStorage.getItem('products')) || [],
             sales: JSON.parse(localStorage.getItem('sales')) || []
         };
     }
@@ -157,25 +156,19 @@
         const select = document.getElementById("productSelect");
         select.innerHTML = '<option value="" disabled selected>-- Select Item --</option>';
         
-        if (products.length === 0) {
-            console.warn("POS: No products found in localStorage.");
-            return;
-        }
-
         products.forEach(p => {
-            // PROPERTY MAPPING: Handles different naming conventions from Admin
-            let name = p.name || p.product_name || p.itemName || "Unknown";
-            let price = parseFloat(p.price || p.unitPrice || 0);
-            let qty = parseInt(p.qty || p.quantity || p.stock || 0);
-            let id = p.id || p.productID || index;
+            // MAPPING: Ensure we handle whichever key the Admin is currently using
+            let currentStock = p.quantity !== undefined ? p.quantity : p.qty;
+            let price = parseFloat(p.price || 0);
+            let name = p.name || "Unnamed Product";
 
-            if(qty > 0) {
+            if(currentStock > 0) {
                 let opt = document.createElement("option");
-                opt.value = id;
-                opt.text = `${name} (Stock: ${qty})`;
+                opt.value = p.id;
+                opt.text = `${name} (Stock: ${currentStock})`;
                 opt.dataset.price = price;
-                opt.dataset.stock = qty;
-                opt.dataset.realName = name; // Store clean name without the stock text
+                opt.dataset.stock = currentStock;
+                opt.dataset.realName = name;
                 select.appendChild(opt);
             }
         });
@@ -230,52 +223,56 @@
         if(cart.length === 0) { alert("Cart is empty!"); return; }
 
         let payment = document.getElementById("paymentMethod").value;
-        let mpesaCode = "";
+        let refCode = "";
 
         if(payment === "M-Pesa") {
-            mpesaCode = prompt("Enter M-Pesa Transaction Code:");
-            if(!mpesaCode) return;
+            refCode = prompt("Enter M-Pesa Transaction Code:");
+            if(!refCode) return;
         }
 
         let data = getLatestData();
         let products = data.products;
         let sales = data.sales;
 
-        // 1. UPDATE ADMIN STOCK
+        // 1. DEDUCT STOCK (Handles Admin's dual keys)
         cart.forEach(cartItem => {
-            // Find by ID or Name
-            let pIndex = products.findIndex(p => (p.id || p.productID) == cartItem.id);
-            if(pIndex !== -1) {
-                // Ensure we use the correct quantity key the Admin uses
-                let qtyKey = products[pIndex].qty !== undefined ? 'qty' : 
-                             products[pIndex].quantity !== undefined ? 'quantity' : 'stock';
-                
-                products[pIndex][qtyKey] -= cartItem.qty; 
+            let pIdx = products.findIndex(p => p.id == cartItem.id);
+            if(pIdx !== -1) {
+                // Update BOTH quantity and qty to stay perfectly in sync with Admin logic
+                if(products[pIdx].quantity !== undefined) products[pIdx].quantity -= cartItem.qty;
+                if(products[pIdx].qty !== undefined) products[pIdx].qty -= cartItem.qty;
             }
         });
 
-        // 2. RECORD SALE FOR ADMIN
+        // 2. CREATE SALE RECORD (Compatible with Admin Reports)
         let newSale = {
-            saleId: "S-" + Date.now(),
+            saleId: "POS-" + Date.now(),
             date: new Date().toLocaleString(),
-            items: cart,
+            pName: cart.map(i => i.name).join(", "), // For simple Admin views
+            items: cart, // For detailed views
             total: total,
-            payment: payment,
-            code: mpesaCode
+            method: payment, // Admin uses 'method'
+            payment: payment, // POS uses 'payment'
+            code: refCode
         };
         sales.push(newSale);
 
-        // 3. SYNC BOTH BACK TO STORAGE
+        // 3. FINAL SYNC
         localStorage.setItem('products', JSON.stringify(products));
         localStorage.setItem('sales', JSON.stringify(sales));
 
-        alert("✅ TRANSACTION SUCCESSFUL!\nStock deducted and sale recorded.");
-        location.reload();
+        alert("✅ TRANSACTION PROCESSED\nAdmin Dashboard updated.");
+        
+        // Clear terminal for next sale
+        cart = [];
+        total = 0;
+        updateCartUI();
+        loadProducts(); // Refresh stock in dropdown
     }
 
-    // Auto-refresh if you add stock in another tab
+    // LISTENER: If stock is added in Admin tab, update dropdown immediately
     window.addEventListener('storage', (e) => {
-        if (e.key === 'products' || e.key === 'Products') loadProducts();
+        if (e.key === 'products') loadProducts();
     });
 
     window.onload = loadProducts;
