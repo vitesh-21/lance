@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard | Stock Management System (JS Version)</title>
+    <title>Dashboard | Stock Management System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
@@ -106,7 +106,6 @@
             overflow: hidden;
         }
         .card .value { font-size: 1.8rem; font-weight: bold; color: #2c3e50; }
-        .card .icon { position: absolute; right: 15px; bottom: 15px; font-size: 2.5rem; opacity: 0.1; }
 
         /* MODALS */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(3px); }
@@ -117,10 +116,12 @@
         .add-btn:hover { background: #219150; transform: translateY(-1px); }
 
         .badge { padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
-        .badge-success { background: #eafaf1; color: #27ae60; }
         .badge-info { background: #e8f4fd; color: #3498db; }
 
         .alert-toast { position: fixed; top: 20px; right: 20px; background: var(--success-green); color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 2000; display: none; }
+
+        .search-container { margin-bottom: 15px; }
+        .search-input { width: 300px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
     </style>
 </head>
 <body>
@@ -133,16 +134,16 @@
         </div>
         
         <div class="sidebar-links" style="flex: 1; display: flex; flex-direction: column;">
-            <a class="side-item active" title="Dashboard" onclick="showTab('home', this)"><i class="fas fa-th-large"></i></a>
-            <a class="side-item" title="Inventory" onclick="showTab('products', this)"><i class="fas fa-box"></i></a>
-            <a class="side-item" title="Users" onclick="showTab('users-tab', this)"><i class="fas fa-users"></i></a>
-            <a class="side-item" title="Reports" onclick="showTab('reports', this)"><i class="fas fa-chart-line"></i></a>
+            <a class="side-item active" data-tab="home" onclick="showTab('home', this)"><i class="fas fa-th-large"></i></a>
+            <a class="side-item" data-tab="products" onclick="showTab('products', this)"><i class="fas fa-box"></i></a>
+            <a class="side-item" data-tab="users-tab" onclick="showTab('users-tab', this)"><i class="fas fa-users"></i></a>
+            <a class="side-item" data-tab="reports" onclick="showTab('reports', this)"><i class="fas fa-chart-line"></i></a>
             <hr style="width: 40%; align-self: center; border: 0.5px solid rgba(255,255,255,0.1); margin: 10px 0;">
-            <a class="side-item" title="Settings" onclick="showTab('settings', this)"><i class="fas fa-cog"></i></a>
+            <a class="side-item" data-tab="settings" onclick="showTab('settings', this)"><i class="fas fa-cog"></i></a>
         </div>
 
         <div class="sidebar-bottom">
-            <a class="side-item" title="Logout" onclick="logout()" style="color: var(--danger-red);"><i class="fas fa-power-off"></i></a>
+            <a class="side-item" onclick="location.reload()" style="color: var(--danger-red);"><i class="fas fa-power-off"></i></a>
         </div>
     </aside>
 
@@ -153,11 +154,11 @@
         </header>
 
         <nav class="nav-bar">
-            <a class="nav-item active" onclick="showTab('home', this)">Home</a>
-            <a class="nav-item" onclick="showTab('products', this)">Products</a>
-            <a class="nav-item" onclick="showTab('users-tab', this)">Users</a>
-            <a class="nav-item" onclick="showTab('sales', this)">Sales</a>
-            <a class="nav-item" onclick="showTab('reports', this)">Reports</a>
+            <a class="nav-item active" data-tab="home" onclick="showTab('home', this)">Home</a>
+            <a class="nav-item" data-tab="products" onclick="showTab('products', this)">Products</a>
+            <a class="nav-item" data-tab="users-tab" onclick="showTab('users-tab', this)">Users</a>
+            <a class="nav-item" data-tab="sales" onclick="showTab('sales', this)">Sales</a>
+            <a class="nav-item" data-tab="reports" onclick="showTab('reports', this)">Reports</a>
         </nav>
 
         <div id="home" class="tab-content">
@@ -177,6 +178,24 @@
             </section>
         </div>
 
+        <div id="users-tab" class="tab-content" style="display:none;">
+            <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 15px;">
+                <h2>System Users / Staff</h2>
+                <button class="add-btn" style="background: var(--accent-blue);" onclick="openUserModal()">Add User</button>
+            </div>
+            
+            <div class="search-container">
+                <input type="text" id="userSearch" class="search-input" placeholder="Search users by name or email..." onkeyup="render()">
+            </div>
+
+            <table class="inventory-table">
+                <thead>
+                    <tr><th>ID</th><th>Full Name</th><th>Role</th><th>Email</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="users-body"></tbody>
+            </table>
+        </div>
+
         <div id="products" class="tab-content" style="display:none;">
             <div style="display:flex; justify-content: space-between; align-items:center;">
                 <h2>Inventory</h2>
@@ -190,53 +209,17 @@
             </table>
         </div>
 
-        <div id="users-tab" class="tab-content" style="display:none;">
-            <div style="display:flex; justify-content: space-between; align-items:center;">
-                <h2>System Users / Staff</h2>
-                <button class="add-btn" style="background: var(--accent-blue);" onclick="openModal('userModal')">Add User</button>
-            </div>
-            <table class="inventory-table">
-                <thead>
-                    <tr><th>ID</th><th>Full Name</th><th>Role</th><th>Email</th><th>Actions</th></tr>
-                </thead>
-                <tbody id="users-body"></tbody>
-            </table>
-        </div>
+        <div id="sales" class="tab-content" style="display:none;"><h2>Sales history coming soon...</h2></div>
+        <div id="reports" class="tab-content" style="display:none;"><h2>Reports content coming soon...</h2></div>
+        <div id="settings" class="tab-content" style="display:none;"><h2>Settings content coming soon...</h2></div>
 
-        <div id="sales" class="tab-content" style="display:none;">
-            <h2>Sales History</h2>
-            <table class="inventory-table">
-                <thead>
-                    <tr><th>Date</th><th>Product</th><th>Qty</th><th>Total</th></tr>
-                </thead>
-                <tbody id="sales-body"></tbody>
-            </table>
-        </div>
-
-        <div id="reports" class="tab-content" style="display:none;">
-            <h2>Financial Overview</h2>
-            <div id="report-content"></div>
-        </div>
-    </div>
-
-    <div id="productModal" class="modal">
-        <div class="modal-content">
-            <h3>New Product</h3>
-            <form id="productForm">
-                <input type="text" id="pName" placeholder="Product Name" required>
-                <input type="text" id="pCat" placeholder="Category" required>
-                <input type="number" id="pQty" placeholder="Quantity" required>
-                <input type="number" id="pPrice" placeholder="Price" required>
-                <button type="submit" class="add-btn" style="width:100%">Save</button>
-                <button type="button" onclick="closeModal('productModal')" style="width:100%; background:#999; margin-top:5px;" class="add-btn">Cancel</button>
-            </form>
-        </div>
     </div>
 
     <div id="userModal" class="modal">
         <div class="modal-content">
-            <h3>Add System User</h3>
+            <h3 id="userModalTitle">Add System User</h3>
             <form id="userForm">
+                <input type="hidden" id="editUserId">
                 <input type="text" id="uName" placeholder="Full Name" required>
                 <select id="uRole">
                     <option value="Admin">Admin</option>
@@ -262,30 +245,45 @@
             render();
         }
 
-        document.getElementById('productForm').onsubmit = (e) => {
-            e.preventDefault();
-            products.push({
-                id: Date.now(),
-                name: document.getElementById('pName').value,
-                cat: document.getElementById('pCat').value,
-                qty: parseInt(document.getElementById('pQty').value),
-                price: parseFloat(document.getElementById('pPrice').value)
+        // --- ENHANCED NAVIGATION LOGIC ---
+        function showTab(id, el) {
+            // Hide all
+            document.querySelectorAll('.tab-content').forEach(t => t.style.display='none');
+            // Show target
+            document.getElementById(id).style.display='block';
+            
+            // Sync active class for BOTH sidebar and top nav
+            document.querySelectorAll('.nav-item, .side-item').forEach(item => {
+                item.classList.remove('active');
+                if(item.getAttribute('data-tab') === id) {
+                    item.classList.add('active');
+                }
             });
-            closeModal('productModal');
-            showToast("Product Added");
-            sync();
-        };
+        }
 
+        // --- USER CRUD ---
         document.getElementById('userForm').onsubmit = (e) => {
             e.preventDefault();
-            users.push({
-                id: "U-" + Math.floor(Math.random()*9000),
+            const editId = document.getElementById('editUserId').value;
+            const userData = {
+                id: editId || "U-" + Math.floor(Math.random()*9000),
                 name: document.getElementById('uName').value,
                 role: document.getElementById('uRole').value,
                 email: document.getElementById('uEmail').value
-            });
+            };
+
+            if (editId) {
+                // Update existing
+                const index = users.findIndex(u => u.id === editId);
+                users[index] = userData;
+                showToast("User Updated");
+            } else {
+                // Add new
+                users.push(userData);
+                showToast("User Added");
+            }
+
             closeModal('userModal');
-            showToast("User Added Successfully");
             sync();
         };
 
@@ -296,12 +294,54 @@
             }
         }
 
+        function editUser(id) {
+            const u = users.find(x => x.id === id);
+            if(!u) return;
+
+            document.getElementById('userModalTitle').innerText = "Edit User";
+            document.getElementById('editUserId').value = u.id;
+            document.getElementById('uName').value = u.name;
+            document.getElementById('uRole').value = u.role;
+            document.getElementById('uEmail').value = u.email;
+
+            openModal('userModal');
+        }
+
+        function openUserModal() {
+            document.getElementById('userForm').reset();
+            document.getElementById('editUserId').value = "";
+            document.getElementById('userModalTitle').innerText = "Add System User";
+            openModal('userModal');
+        }
+
+        // --- RENDERING ---
         function render() {
             // Stats
             document.getElementById('stat-total-products').innerText = products.length;
             document.getElementById('stat-total-users').innerText = users.length;
-            const rev = sales.reduce((a,b) => a + b.total, 0);
+            const rev = sales.reduce((a,b) => a + (b.total || 0), 0);
             document.getElementById('stat-total-revenue').innerText = "Ksh " + rev.toLocaleString();
+
+            // Users Table with Search Filter
+            const searchTerm = document.getElementById('userSearch').value.toLowerCase();
+            const filteredUsers = users.filter(u => 
+                u.name.toLowerCase().includes(searchTerm) || 
+                u.email.toLowerCase().includes(searchTerm)
+            );
+
+            const userBody = document.getElementById('users-body');
+            userBody.innerHTML = filteredUsers.length > 0 ? filteredUsers.map(u => `
+                <tr>
+                    <td>${u.id}</td>
+                    <td><strong>${u.name}</strong></td>
+                    <td><span class="badge badge-info">${u.role}</span></td>
+                    <td>${u.email}</td>
+                    <td>
+                        <button onclick="editUser('${u.id}')" style="color:blue; border:none; background:none; cursor:pointer; margin-right:10px;"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteUser('${u.id}')" style="color:red; border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('') : `<tr><td colspan="5" style="text-align:center;">No users found</td></tr>`;
 
             // Products Table
             document.getElementById('inventory-body').innerHTML = products.map(p => `
@@ -313,24 +353,6 @@
                     <td><button onclick="products=products.filter(x=>x.id!=${p.id});sync();" style="color:red; border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button></td>
                 </tr>
             `).join('');
-
-            // Users Table
-            document.getElementById('users-body').innerHTML = users.map(u => `
-                <tr>
-                    <td>${u.id}</td>
-                    <td><strong>${u.name}</strong></td>
-                    <td><span class="badge badge-info">${u.role}</span></td>
-                    <td>${u.email}</td>
-                    <td><button onclick="deleteUser('${u.id}')" style="color:red; border:none; background:none; cursor:pointer;"><i class="fas fa-user-minus"></i></button></td>
-                </tr>
-            `).join('');
-        }
-
-        function showTab(id, el) {
-            document.querySelectorAll('.tab-content').forEach(t => t.style.display='none');
-            document.getElementById(id).style.display='block';
-            document.querySelectorAll('.nav-item, .side-item').forEach(i => i.classList.remove('active'));
-            el.classList.add('active');
         }
 
         function openModal(id) { document.getElementById(id).style.display='block'; }
