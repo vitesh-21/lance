@@ -228,14 +228,21 @@
         <div id="suppliers" class="tab-content" style="display:none;">
             <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 style="color: var(--primary-dark);">Supplier Management</h2>
-                <button class="add-btn" onclick="alert('Feature to add suppliers coming soon!')"><i class="fas fa-plus"></i> Add Supplier</button>
+                <button class="add-btn" onclick="openModal('supplierModal')"><i class="fas fa-plus"></i> Add Supplier</button>
             </div>
-            <div class="activity-section">
-                <p style="text-align:center; padding:40px; color:#999;">
-                    <i class="fas fa-truck-loading" style="font-size: 3rem; display:block; margin-bottom:15px; opacity:0.3;"></i>
-                    Manage your product suppliers and contact details here.
-                </p>
-            </div>
+            <table class="inventory-table">
+                <thead>
+                    <tr>
+                        <th>Supplier Name</th>
+                        <th>Contact Person</th>
+                        <th>Phone</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="supplier-table-body"></tbody>
+            </table>
         </div>
 
         <div id="sales" class="tab-content" style="display:none;">
@@ -316,6 +323,20 @@
         </div>
     </div>
 
+    <div id="supplierModal" class="modal">
+        <div class="modal-content">
+            <h2>Add New Supplier</h2>
+            <form id="addSupplierForm">
+                <input type="text" id="sName" placeholder="Supplier Company Name" required>
+                <input type="text" id="sContact" placeholder="Contact Person Name" required>
+                <input type="text" id="sPhone" placeholder="Phone Number" required>
+                <input type="text" id="sCat" placeholder="Supplies Category (e.g. Beverages)" required>
+                <button type="submit" class="add-btn" style="width:100%; margin-top:10px;">Save Supplier</button>
+                <button type="button" onclick="closeModal('supplierModal')" style="width:100%; background:#95a5a6; margin-top:5px;" class="add-btn">Cancel</button>
+            </form>
+        </div>
+    </div>
+
     <div id="sellModal" class="modal">
         <div class="modal-content">
             <h2 id="sellTitle">Record Sale</h2>
@@ -339,11 +360,15 @@
         // --- DATA INITIALIZATION ---
         let products = JSON.parse(localStorage.getItem('products')) || [];
         let sales = JSON.parse(localStorage.getItem('sales')) || [];
+        let suppliers = JSON.parse(localStorage.getItem('suppliers')) || [
+            { id: 1, name: "Global Drinks Ltd", contact: "John Doe", phone: "0712345678", category: "Beverages", status: "Active" }
+        ];
 
         // --- CORE FUNCTIONS ---
         function syncData() {
             localStorage.setItem('products', JSON.stringify(products));
             localStorage.setItem('sales', JSON.stringify(sales));
+            localStorage.setItem('suppliers', JSON.stringify(suppliers));
             renderAll();
         }
 
@@ -360,6 +385,22 @@
             products.push(newProduct);
             this.reset();
             closeModal('productModal');
+            syncData();
+        };
+
+        document.getElementById('addSupplierForm').onsubmit = function(e) {
+            e.preventDefault();
+            const newSupplier = {
+                id: Date.now(),
+                name: document.getElementById('sName').value,
+                contact: document.getElementById('sContact').value,
+                phone: document.getElementById('sPhone').value,
+                category: document.getElementById('sCat').value,
+                status: "Active"
+            };
+            suppliers.push(newSupplier);
+            this.reset();
+            closeModal('supplierModal');
             syncData();
         };
 
@@ -396,10 +437,18 @@
             }
         }
 
+        function deleteSupplier(id) {
+            if(confirm('Delete this supplier?')) {
+                suppliers = suppliers.filter(s => s.id !== id);
+                syncData();
+            }
+        }
+
         // --- UI RENDERING ---
         function renderAll() {
             renderStats();
             renderInventory();
+            renderSuppliers();
             renderSales();
             renderRecentActivity();
             renderReports();
@@ -437,6 +486,26 @@
                     </tr>
                 `;
             }).join('');
+        }
+
+        function renderSuppliers() {
+            const body = document.getElementById('supplier-table-body');
+            if (suppliers.length === 0) {
+                body.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#999;">No suppliers added yet.</td></tr>`;
+                return;
+            }
+            body.innerHTML = suppliers.map(s => `
+                <tr>
+                    <td><strong>${s.name}</strong></td>
+                    <td>${s.contact}</td>
+                    <td>${s.phone}</td>
+                    <td>${s.category}</td>
+                    <td><span class="badge badge-success">${s.status}</span></td>
+                    <td>
+                        <button onclick="deleteSupplier(${s.id})" style="color:var(--danger-red); border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
         }
 
         function renderSales() {
@@ -477,7 +546,6 @@
             document.getElementById('report-mpesa').innerText = `Ksh ${calculate('M-Pesa').toLocaleString()}`;
             document.getElementById('report-card').innerText = `Ksh ${calculate('Card').toLocaleString()}`;
 
-            // Calculate Top Selling Products Logic
             const productSales = {};
             sales.forEach(sale => {
                 if (!productSales[sale.pName]) {
