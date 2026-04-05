@@ -135,10 +135,17 @@
         .add-btn { background: var(--success-green); color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         .add-btn:hover { background: #219150; transform: translateY(-1px); }
 
-        .alert-toast { position: fixed; top: 20px; right: 20px; background: var(--success-green); color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 1001; display: none; }
+        .alert-toast { position: fixed; top: 20px; right: 20px; background: var(--success-green); color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 2000; display: none; }
+        
+        /* SEARCH BAR */
+        .search-container { position: relative; width: 300px; }
+        .search-container i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #999; }
+        .search-container input { padding-left: 35px; margin: 0; }
     </style>
 </head>
 <body>
+
+    <div id="toast" class="alert-toast">Success!</div>
 
     <aside class="side-bar">
         <div class="sidebar-top">
@@ -201,7 +208,10 @@
 
         <div id="products" class="tab-content" style="display:none;">
             <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 style="color: var(--primary-dark);">Product Inventory</h2>
+                <div class="search-container">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="productSearch" placeholder="Search product..." onkeyup="filterProducts()">
+                </div>
                 <button class="add-btn" onclick="openModal('productModal')"><i class="fas fa-plus"></i> Add Product</button>
             </div>
             <table class="inventory-table">
@@ -263,14 +273,15 @@
 
     <div id="productModal" class="modal">
         <div class="modal-content">
-            <h2>Add New Product</h2>
+            <h2 id="modalTitle">Add New Product</h2>
             <form id="addProductForm">
+                <input type="hidden" id="editProductId">
                 <input type="text" id="pName" placeholder="Product Name" required>
                 <input type="text" id="pCat" placeholder="Category" required>
                 <input type="text" id="pSize" placeholder="Size (e.g. 500ml)" required>
                 <input type="number" id="pQty" placeholder="Quantity" required>
                 <input type="number" id="pPrice" placeholder="Price (Ksh)" required>
-                <button type="submit" class="add-btn" style="width:100%; margin-top:10px;">Save Product</button>
+                <button type="submit" id="saveBtn" class="add-btn" style="width:100%; margin-top:10px;">Save Product</button>
                 <button type="button" onclick="closeModal('productModal')" style="width:100%; background:#95a5a6; margin-top:5px;" class="add-btn">Cancel</button>
             </form>
         </div>
@@ -308,19 +319,36 @@
             renderAll();
         }
 
-        // Add Product Logic
+        // Add/Edit Product Logic
         document.getElementById('addProductForm').onsubmit = function(e) {
             e.preventDefault();
-            const newProduct = {
-                id: Date.now(),
+            const editId = document.getElementById('editProductId').value;
+            
+            const productData = {
                 name: document.getElementById('pName').value,
                 category: document.getElementById('pCat').value,
                 size: document.getElementById('pSize').value,
                 quantity: parseInt(document.getElementById('pQty').value),
                 price: parseFloat(document.getElementById('pPrice').value)
             };
-            products.push(newProduct);
+
+            if (editId) {
+                // Update existing
+                const idx = products.findIndex(p => p.id == editId);
+                products[idx] = { ...products[idx], ...productData };
+                showToast("Product Updated Successfully!");
+            } else {
+                // Add new
+                const newProduct = {
+                    id: Date.now(),
+                    ...productData
+                };
+                products.push(newProduct);
+                showToast("Product Added Successfully!");
+            }
+            
             this.reset();
+            document.getElementById('editProductId').value = '';
             closeModal('productModal');
             syncData();
         };
@@ -346,6 +374,7 @@
                 };
                 sales.push(newSale);
                 closeModal('sellModal');
+                showToast("Sale Recorded!");
                 syncData();
             } else {
                 alert("Not enough stock!");
@@ -355,8 +384,21 @@
         function deleteProduct(id) {
             if(confirm('Delete this product?')) {
                 products = products.filter(p => p.id !== id);
+                showToast("Product Deleted", "danger");
                 syncData();
             }
+        }
+
+        function editProduct(id) {
+            const p = products.find(prod => prod.id === id);
+            document.getElementById('modalTitle').innerText = "Edit Product";
+            document.getElementById('editProductId').value = p.id;
+            document.getElementById('pName').value = p.name;
+            document.getElementById('pCat').value = p.category;
+            document.getElementById('pSize').value = p.size;
+            document.getElementById('pQty').value = p.quantity;
+            document.getElementById('pPrice').value = p.price;
+            openModal('productModal');
         }
 
         // --- UI RENDERING ---
@@ -377,9 +419,9 @@
             document.getElementById('stat-total-revenue').innerText = `Ksh ${revenue.toLocaleString()}`;
         }
 
-        function renderInventory() {
+        function renderInventory(data = products) {
             const body = document.getElementById('inventory-table-body');
-            body.innerHTML = products.map(p => {
+            body.innerHTML = data.map(p => {
                 let statusClass = 'badge-success';
                 let statusText = 'In Stock';
                 if(p.quantity <= 0) { statusClass = 'badge-danger'; statusText = 'Out of Stock'; }
@@ -395,12 +437,22 @@
                         <td>Ksh ${p.price.toLocaleString()}</td>
                         <td><span class="badge ${statusClass}">${statusText}</span></td>
                         <td>
-                            <button onclick="openSellModal(${p.id}, '${p.name}', ${p.quantity})" style="color:var(--success-green); border:none; background:none; cursor:pointer; font-size:1.2rem; margin-right:10px;"><i class="fas fa-plus-circle"></i></button>
-                            <button onclick="deleteProduct(${p.id})" style="color:var(--danger-red); border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
+                            <button onclick="openSellModal(${p.id}, '${p.name}', ${p.quantity})" title="Sell" style="color:var(--success-green); border:none; background:none; cursor:pointer; font-size:1.1rem; margin-right:8px;"><i class="fas fa-plus-circle"></i></button>
+                            <button onclick="editProduct(${p.id})" title="Edit" style="color:var(--accent-blue); border:none; background:none; cursor:pointer; font-size:1.1rem; margin-right:8px;"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteProduct(${p.id})" title="Delete" style="color:var(--danger-red); border:none; background:none; cursor:pointer; font-size:1.1rem;"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
                 `;
             }).join('');
+        }
+
+        function filterProducts() {
+            const query = document.getElementById('productSearch').value.toLowerCase();
+            const filtered = products.filter(p => 
+                p.name.toLowerCase().includes(query) || 
+                p.category.toLowerCase().includes(query)
+            );
+            renderInventory(filtered);
         }
 
         function renderSales() {
@@ -423,16 +475,18 @@
                 list.innerHTML = `<p style="text-align:center; padding:20px; color:#999;">No recent sales.</p>`;
                 return;
             }
-            list.innerHTML = recent.map(s => `
+            list.innerHTML = recent.map(s => {
+                const date = new Date(s.date);
+                return `
                 <div class="activity-item">
                     <div class="activity-icon"><i class="fas fa-receipt"></i></div>
                     <div style="flex:1;">
                         <span style="font-weight:600;">Sale:</span> Sold ${s.qty} units of <strong>${s.pName}</strong>.
                         <br><small>Method: ${s.method} | Total: Ksh ${s.total.toLocaleString()}</small>
                     </div>
-                    <div style="color:#999; font-size:0.8rem;">${new Date(s.date).getHours()}:${new Date(s.date).getMinutes()}</div>
+                    <div style="color:#999; font-size:0.8rem;">${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}</div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         function renderReports() {
@@ -452,19 +506,50 @@
             el.classList.add('active');
         }
 
-        function openModal(id) { document.getElementById(id).style.display = 'block'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function openModal(id) { 
+            if(id === 'productModal' && !document.getElementById('editProductId').value) {
+                document.getElementById('modalTitle').innerText = "Add New Product";
+            }
+            document.getElementById(id).style.display = 'block'; 
+        }
+
+        function closeModal(id) { 
+            document.getElementById(id).style.display = 'none'; 
+            if(id === 'productModal') {
+                document.getElementById('addProductForm').reset();
+                document.getElementById('editProductId').value = '';
+            }
+        }
+
+        window.onclick = function(event) {
+            if (event.target.className === 'modal') {
+                event.target.style.display = "none";
+            }
+        }
 
         function openSellModal(id, name, stock) {
+            if(stock <= 0) {
+                alert("Cannot sell: Out of stock!");
+                return;
+            }
             document.getElementById('sellProductId').value = id;
             document.getElementById('sellTitle').innerText = "Sell: " + name;
             document.getElementById('maxStock').innerText = stock;
             document.getElementById('sellQty').max = stock;
+            document.getElementById('sellQty').value = 1;
             openModal('sellModal');
         }
 
+        function showToast(msg, type = "success") {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.style.background = type === "success" ? "var(--success-green)" : "var(--danger-red)";
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        }
+
         function logout() {
-            if(confirm("Logout? (This will just refresh the page in this local version)")) {
+            if(confirm("Logout? (This will refresh the page in this local version)")) {
                 window.location.reload();
             }
         }
