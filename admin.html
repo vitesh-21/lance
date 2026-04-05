@@ -138,9 +138,9 @@
         .alert-toast { position: fixed; top: 20px; right: 20px; background: var(--success-green); color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 2000; display: none; }
         
         /* SEARCH BAR */
-        .search-container { position: relative; width: 300px; }
-        .search-container i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #999; }
-        .search-container input { padding-left: 35px; margin: 0; }
+        .search-wrapper { position: relative; width: 300px; }
+        .search-wrapper i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #999; }
+        .search-wrapper input { padding-left: 35px; margin: 0; }
     </style>
 </head>
 <body>
@@ -201,14 +201,13 @@
             
             <div class="activity-section">
                 <h2 style="margin-bottom: 20px; color: var(--primary-dark); font-size: 1.1rem; border-bottom: 1px solid #eee; padding-bottom: 10px;">Recent Activity</h2>
-                <div id="recent-activity-list" class="activity-list">
-                    </div>
+                <div id="recent-activity-list" class="activity-list"></div>
             </div>
         </div>
 
         <div id="products" class="tab-content" style="display:none;">
             <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <div class="search-container">
+                <div class="search-wrapper">
                     <i class="fas fa-search"></i>
                     <input type="text" id="productSearch" placeholder="Search product..." onkeyup="filterProducts()">
                 </div>
@@ -227,8 +226,7 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody id="inventory-table-body">
-                    </tbody>
+                <tbody id="inventory-table-body"></tbody>
             </table>
         </div>
 
@@ -247,8 +245,7 @@
                         <th>Total Amount</th>
                     </tr>
                 </thead>
-                <tbody id="sales-history-body">
-                    </tbody>
+                <tbody id="sales-history-body"></tbody>
             </table>
         </div>
 
@@ -281,7 +278,7 @@
                 <input type="text" id="pSize" placeholder="Size (e.g. 500ml)" required>
                 <input type="number" id="pQty" placeholder="Quantity" required>
                 <input type="number" id="pPrice" placeholder="Price (Ksh)" required>
-                <button type="submit" id="saveBtn" class="add-btn" style="width:100%; margin-top:10px;">Save Product</button>
+                <button type="submit" class="add-btn" style="width:100%; margin-top:10px;">Save Product</button>
                 <button type="button" onclick="closeModal('productModal')" style="width:100%; background:#95a5a6; margin-top:5px;" class="add-btn">Cancel</button>
             </form>
         </div>
@@ -307,11 +304,8 @@
     </div>
 
     <script>
-        // --- DATA INITIALIZATION ---
         let products = JSON.parse(localStorage.getItem('products')) || [];
         let sales = JSON.parse(localStorage.getItem('sales')) || [];
-
-        // --- CORE FUNCTIONS ---
 
         function syncData() {
             localStorage.setItem('products', JSON.stringify(products));
@@ -319,12 +313,11 @@
             renderAll();
         }
 
-        // Add/Edit Product Logic
+        // Add/Edit Logic
         document.getElementById('addProductForm').onsubmit = function(e) {
             e.preventDefault();
             const editId = document.getElementById('editProductId').value;
-            
-            const productData = {
+            const pData = {
                 name: document.getElementById('pName').value,
                 category: document.getElementById('pCat').value,
                 size: document.getElementById('pSize').value,
@@ -332,23 +325,14 @@
                 price: parseFloat(document.getElementById('pPrice').value)
             };
 
-            if (editId) {
-                // Update existing
+            if(editId) {
                 const idx = products.findIndex(p => p.id == editId);
-                products[idx] = { ...products[idx], ...productData };
-                showToast("Product Updated Successfully!");
+                products[idx] = { ...products[idx], ...pData };
+                showToast("Product Updated");
             } else {
-                // Add new
-                const newProduct = {
-                    id: Date.now(),
-                    ...productData
-                };
-                products.push(newProduct);
-                showToast("Product Added Successfully!");
+                products.push({ id: Date.now(), ...pData });
+                showToast("Product Added");
             }
-            
-            this.reset();
-            document.getElementById('editProductId').value = '';
             closeModal('productModal');
             syncData();
         };
@@ -359,32 +343,28 @@
             const id = parseInt(document.getElementById('sellProductId').value);
             const qty = parseInt(document.getElementById('sellQty').value);
             const method = document.getElementById('sellMethod').value;
-
             const idx = products.findIndex(p => p.id === id);
+
             if(products[idx].quantity >= qty) {
                 products[idx].quantity -= qty;
-                
-                const newSale = {
+                sales.push({
                     id: Date.now(),
                     pName: products[idx].name,
                     qty: qty,
                     method: method,
                     total: products[idx].price * qty,
                     date: new Date().toISOString()
-                };
-                sales.push(newSale);
+                });
                 closeModal('sellModal');
-                showToast("Sale Recorded!");
+                showToast("Sale Success");
                 syncData();
-            } else {
-                alert("Not enough stock!");
-            }
+            } else { alert("Insufficient stock!"); }
         };
 
         function deleteProduct(id) {
-            if(confirm('Delete this product?')) {
+            if(confirm('Delete product?')) {
                 products = products.filter(p => p.id !== id);
-                showToast("Product Deleted", "danger");
+                showToast("Deleted", "danger");
                 syncData();
             }
         }
@@ -401,7 +381,11 @@
             openModal('productModal');
         }
 
-        // --- UI RENDERING ---
+        function filterProducts() {
+            const q = document.getElementById('productSearch').value.toLowerCase();
+            const filtered = products.filter(p => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
+            renderInventory(filtered);
+        }
 
         function renderAll() {
             renderStats();
@@ -413,57 +397,41 @@
 
         function renderStats() {
             document.getElementById('stat-total-products').innerText = products.length;
-            const lowStockCount = products.filter(p => p.quantity < 10).length;
-            document.getElementById('stat-low-stock').innerText = lowStockCount;
-            const revenue = sales.reduce((sum, s) => sum + s.total, 0);
-            document.getElementById('stat-total-revenue').innerText = `Ksh ${revenue.toLocaleString()}`;
+            document.getElementById('stat-low-stock').innerText = products.filter(p => p.quantity < 10).length;
+            const rev = sales.reduce((sum, s) => sum + s.total, 0);
+            document.getElementById('stat-total-revenue').innerText = `Ksh ${rev.toLocaleString()}`;
         }
 
         function renderInventory(data = products) {
             const body = document.getElementById('inventory-table-body');
             body.innerHTML = data.map(p => {
-                let statusClass = 'badge-success';
-                let statusText = 'In Stock';
-                if(p.quantity <= 0) { statusClass = 'badge-danger'; statusText = 'Out of Stock'; }
-                else if(p.quantity < 10) { statusClass = 'badge-warning'; statusText = 'Low Stock'; }
-
-                return `
-                    <tr>
-                        <td>#${p.id.toString().slice(-4)}</td>
-                        <td><strong>${p.name}</strong></td>
-                        <td>${p.category}</td>
-                        <td>${p.size}</td>
-                        <td>${p.quantity}</td>
-                        <td>Ksh ${p.price.toLocaleString()}</td>
-                        <td><span class="badge ${statusClass}">${statusText}</span></td>
-                        <td>
-                            <button onclick="openSellModal(${p.id}, '${p.name}', ${p.quantity})" title="Sell" style="color:var(--success-green); border:none; background:none; cursor:pointer; font-size:1.1rem; margin-right:8px;"><i class="fas fa-plus-circle"></i></button>
-                            <button onclick="editProduct(${p.id})" title="Edit" style="color:var(--accent-blue); border:none; background:none; cursor:pointer; font-size:1.1rem; margin-right:8px;"><i class="fas fa-edit"></i></button>
-                            <button onclick="deleteProduct(${p.id})" title="Delete" style="color:var(--danger-red); border:none; background:none; cursor:pointer; font-size:1.1rem;"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>
-                `;
+                let badge = p.quantity <= 0 ? 'badge-danger' : (p.quantity < 10 ? 'badge-warning' : 'badge-success');
+                let txt = p.quantity <= 0 ? 'Out' : (p.quantity < 10 ? 'Low' : 'In Stock');
+                return `<tr>
+                    <td>#${p.id.toString().slice(-4)}</td>
+                    <td><strong>${p.name}</strong></td>
+                    <td>${p.category}</td>
+                    <td>${p.size}</td>
+                    <td>${p.quantity}</td>
+                    <td>Ksh ${p.price.toLocaleString()}</td>
+                    <td><span class="badge ${badge}">${txt}</span></td>
+                    <td>
+                        <button onclick="openSellModal(${p.id}, '${p.name}', ${p.quantity})" style="color:var(--success-green); border:none; background:none; cursor:pointer; margin-right:10px;"><i class="fas fa-plus-circle"></i></button>
+                        <button onclick="editProduct(${p.id})" style="color:var(--accent-blue); border:none; background:none; cursor:pointer; margin-right:10px;"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteProduct(${p.id})" style="color:var(--danger-red); border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
             }).join('');
         }
 
-        function filterProducts() {
-            const query = document.getElementById('productSearch').value.toLowerCase();
-            const filtered = products.filter(p => 
-                p.name.toLowerCase().includes(query) || 
-                p.category.toLowerCase().includes(query)
-            );
-            renderInventory(filtered);
-        }
-
         function renderSales() {
-            const body = document.getElementById('sales-history-body');
-            body.innerHTML = sales.slice().reverse().map(s => `
+            document.getElementById('sales-history-body').innerHTML = sales.slice().reverse().map(s => `
                 <tr>
                     <td>${new Date(s.date).toLocaleDateString()}</td>
                     <td><strong>${s.pName}</strong></td>
                     <td>${s.qty}</td>
                     <td>${s.method}</td>
-                    <td style="color:var(--success-green); font-weight:bold;">Ksh ${s.total.toLocaleString()}</td>
+                    <td>Ksh ${s.total.toLocaleString()}</td>
                 </tr>
             `).join('');
         }
@@ -471,90 +439,54 @@
         function renderRecentActivity() {
             const list = document.getElementById('recent-activity-list');
             const recent = sales.slice(-5).reverse();
-            if(recent.length === 0) {
-                list.innerHTML = `<p style="text-align:center; padding:20px; color:#999;">No recent sales.</p>`;
-                return;
-            }
-            list.innerHTML = recent.map(s => {
-                const date = new Date(s.date);
-                return `
+            list.innerHTML = recent.length ? recent.map(s => `
                 <div class="activity-item">
                     <div class="activity-icon"><i class="fas fa-receipt"></i></div>
-                    <div style="flex:1;">
-                        <span style="font-weight:600;">Sale:</span> Sold ${s.qty} units of <strong>${s.pName}</strong>.
-                        <br><small>Method: ${s.method} | Total: Ksh ${s.total.toLocaleString()}</small>
-                    </div>
-                    <div style="color:#999; font-size:0.8rem;">${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}</div>
+                    <div style="flex:1;">Sold ${s.qty} x <strong>${s.pName}</strong> (${s.method})</div>
+                    <div style="color:#999; font-size:0.8rem;">${new Date(s.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
                 </div>
-            `}).join('');
+            `).join('') : '<p style="text-align:center; padding:10px; color:#999;">No activity</p>';
         }
 
         function renderReports() {
-            const calculate = (method) => sales.filter(s => s.method === method).reduce((sum, s) => sum + s.total, 0);
-            document.getElementById('report-cash').innerText = `Ksh ${calculate('Cash').toLocaleString()}`;
-            document.getElementById('report-mpesa').innerText = `Ksh ${calculate('M-Pesa').toLocaleString()}`;
-            document.getElementById('report-card').innerText = `Ksh ${calculate('Card').toLocaleString()}`;
+            const calc = (m) => sales.filter(s => s.method === m).reduce((sum, s) => sum + s.total, 0);
+            document.getElementById('report-cash').innerText = `Ksh ${calc('Cash').toLocaleString()}`;
+            document.getElementById('report-mpesa').innerText = `Ksh ${calc('M-Pesa').toLocaleString()}`;
+            document.getElementById('report-card').innerText = `Ksh ${calc('Card').toLocaleString()}`;
         }
-
-        // --- UTILS ---
 
         function showTab(tabId, el) {
             document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
             document.getElementById(tabId).style.display = 'block';
-            
-            document.querySelectorAll('.nav-item, .side-item').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.nav-item, .side-item').forEach(i => i.classList.remove('active'));
             el.classList.add('active');
         }
 
-        function openModal(id) { 
-            if(id === 'productModal' && !document.getElementById('editProductId').value) {
-                document.getElementById('modalTitle').innerText = "Add New Product";
-            }
-            document.getElementById(id).style.display = 'block'; 
-        }
-
+        function openModal(id) { document.getElementById(id).style.display = 'block'; }
         function closeModal(id) { 
             document.getElementById(id).style.display = 'none'; 
-            if(id === 'productModal') {
-                document.getElementById('addProductForm').reset();
-                document.getElementById('editProductId').value = '';
-            }
-        }
-
-        window.onclick = function(event) {
-            if (event.target.className === 'modal') {
-                event.target.style.display = "none";
-            }
+            document.getElementById('addProductForm').reset();
+            document.getElementById('editProductId').value = '';
         }
 
         function openSellModal(id, name, stock) {
-            if(stock <= 0) {
-                alert("Cannot sell: Out of stock!");
-                return;
-            }
+            if(stock <= 0) return alert("No stock");
             document.getElementById('sellProductId').value = id;
             document.getElementById('sellTitle').innerText = "Sell: " + name;
             document.getElementById('maxStock').innerText = stock;
             document.getElementById('sellQty').max = stock;
-            document.getElementById('sellQty').value = 1;
             openModal('sellModal');
         }
 
-        function showToast(msg, type = "success") {
-            const toast = document.getElementById('toast');
-            toast.innerText = msg;
-            toast.style.background = type === "success" ? "var(--success-green)" : "var(--danger-red)";
-            toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        function showToast(m, t="success") {
+            const el = document.getElementById('toast');
+            el.innerText = m;
+            el.style.background = t === "success" ? "var(--success-green)" : "var(--danger-red)";
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 3000);
         }
 
-        function logout() {
-            if(confirm("Logout? (This will refresh the page in this local version)")) {
-                window.location.reload();
-            }
-        }
-
-        // Init
+        function logout() { if(confirm("Refresh?")) window.location.reload(); }
         window.onload = renderAll;
     </script>
 </body>
