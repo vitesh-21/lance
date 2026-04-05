@@ -79,6 +79,28 @@
         }
         .confirm-btn:hover { background: #00cc55; }
         #phoneGroup { display: none; }
+
+        /* RECEIPT PRINT STYLES */
+        #receipt-print {
+            display: none;
+            background: white;
+            color: black;
+            padding: 20px;
+            width: 300px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        @media print {
+            body * { visibility: hidden; }
+            #receipt-print, #receipt-print * { visibility: visible; }
+            #receipt-print {
+                display: block;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -139,11 +161,27 @@
     </main>
 </div>
 
+<div id="receipt-print">
+    <center>
+        <h3>OHM SMART SYSTEMS</h3>
+        <p>Official Purchase Receipt</p>
+        <p>---------------------------</p>
+    </center>
+    <div id="receipt-details"></div>
+    <p>---------------------------</p>
+    <div id="receipt-items"></div>
+    <p>---------------------------</p>
+    <h4 id="receipt-total" style="text-align: right;"></h4>
+    <center>
+        <p>Thank you for shopping!</p>
+        <p id="receipt-date"></p>
+    </center>
+</div>
+
 <script>
     let cart = [];
     let total = 0;
 
-    // 1. DATA SYNC - Get latest from Admin storage
     function getLatestData() {
         return {
             products: JSON.parse(localStorage.getItem('products')) || [],
@@ -155,13 +193,10 @@
         const { products } = getLatestData();
         const select = document.getElementById("productSelect");
         select.innerHTML = '<option value="" disabled selected>-- Select Item --</option>';
-        
         products.forEach(p => {
-            // MAPPING: Ensure we handle whichever key the Admin is currently using
             let currentStock = p.quantity !== undefined ? p.quantity : p.qty;
             let price = parseFloat(p.price || 0);
             let name = p.name || "Unnamed Product";
-
             if(currentStock > 0) {
                 let opt = document.createElement("option");
                 opt.value = p.id;
@@ -190,22 +225,16 @@
         let select = document.getElementById("productSelect");
         let qtyInput = document.getElementById("qtyInput");
         let qty = parseInt(qtyInput.value);
-
         if(!select.value) { alert("Please select a product"); return; }
-        
         let opt = select.options[select.selectedIndex];
         let stock = parseInt(opt.dataset.stock);
         let name = opt.dataset.realName;
         let price = parseFloat(opt.dataset.price);
 
-        if(qty > stock) {
-            alert(`Error: Only ${stock} units available!`);
-            return;
-        }
+        if(qty > stock) { alert(`Error: Only ${stock} units available!`); return; }
 
         let itemTotal = price * qty;
         cart.push({ id: select.value, name: name, qty: qty, price: price, total: itemTotal });
-        
         total += itemTotal;
         updateCartUI();
         qtyInput.value = 1;
@@ -221,10 +250,8 @@
 
     function confirmSale(){
         if(cart.length === 0) { alert("Cart is empty!"); return; }
-
         let payment = document.getElementById("paymentMethod").value;
         let refCode = "";
-
         if(payment === "M-Pesa") {
             refCode = prompt("Enter M-Pesa Transaction Code:");
             if(!refCode) return;
@@ -234,43 +261,52 @@
         let products = data.products;
         let sales = data.sales;
 
-        // 1. DEDUCT STOCK (Handles Admin's dual keys)
         cart.forEach(cartItem => {
             let pIdx = products.findIndex(p => p.id == cartItem.id);
             if(pIdx !== -1) {
-                // Update BOTH quantity and qty to stay perfectly in sync with Admin logic
                 if(products[pIdx].quantity !== undefined) products[pIdx].quantity -= cartItem.qty;
                 if(products[pIdx].qty !== undefined) products[pIdx].qty -= cartItem.qty;
             }
         });
 
-        // 2. CREATE SALE RECORD (Compatible with Admin Reports)
-        let newSale = {
+        let saleObj = {
             saleId: "POS-" + Date.now(),
             date: new Date().toLocaleString(),
-            pName: cart.map(i => i.name).join(", "), // For simple Admin views
-            items: cart, // For detailed views
+            pName: cart.map(i => i.name).join(", "),
+            items: cart,
             total: total,
-            method: payment, // Admin uses 'method'
-            payment: payment, // POS uses 'payment'
+            method: payment,
             code: refCode
         };
-        sales.push(newSale);
+        sales.push(saleObj);
 
-        // 3. FINAL SYNC
         localStorage.setItem('products', JSON.stringify(products));
         localStorage.setItem('sales', JSON.stringify(sales));
 
-        alert("✅ TRANSACTION PROCESSED\nAdmin Dashboard updated.");
+        // TRIGGER RECEIPT PRINTING
+        generateReceipt(saleObj);
         
-        // Clear terminal for next sale
+        // Reset POS
         cart = [];
         total = 0;
         updateCartUI();
-        loadProducts(); // Refresh stock in dropdown
+        loadProducts();
     }
 
-    // LISTENER: If stock is added in Admin tab, update dropdown immediately
+    function generateReceipt(sale) {
+        document.getElementById("receipt-details").innerHTML = `
+            ID: ${sale.saleId}<br>
+            Pay: ${sale.method} ${sale.code ? '('+sale.code+')' : ''}
+        `;
+        document.getElementById("receipt-items").innerHTML = sale.items.map(i => 
+            `<div>${i.name} x${i.qty} @${i.price} <span style="float:right">${i.total}</span></div>`
+        ).join('');
+        document.getElementById("receipt-total").innerText = `TOTAL: Ksh ${sale.total.toLocaleString()}`;
+        document.getElementById("receipt-date").innerText = sale.date;
+
+        window.print(); // Triggers the print dialog
+    }
+
     window.addEventListener('storage', (e) => {
         if (e.key === 'products') loadProducts();
     });
