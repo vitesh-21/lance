@@ -304,6 +304,7 @@
             <h2 style="margin-bottom:20px;">System Settings</h2>
             <div class="activity-section">
                 <p>Local configuration and user preferences.</p>
+                <button onclick="clearAllData()" style="background: var(--danger-red); margin-top: 20px;" class="add-btn">Clear All System Data</button>
             </div>
         </div>
     </div>
@@ -360,9 +361,7 @@
         // --- DATA INITIALIZATION ---
         let products = JSON.parse(localStorage.getItem('products')) || [];
         let sales = JSON.parse(localStorage.getItem('sales')) || [];
-        let suppliers = JSON.parse(localStorage.getItem('suppliers')) || [
-            { id: 1, name: "Global Drinks Ltd", contact: "John Doe", phone: "0712345678", category: "Beverages", status: "Active" }
-        ];
+        let suppliers = JSON.parse(localStorage.getItem('suppliers')) || [];
 
         // --- CORE FUNCTIONS ---
         function syncData() {
@@ -372,6 +371,7 @@
             renderAll();
         }
 
+        // --- PRODUCT LOGIC ---
         document.getElementById('addProductForm').onsubmit = function(e) {
             e.preventDefault();
             const newProduct = {
@@ -388,6 +388,14 @@
             syncData();
         };
 
+        function deleteProduct(id) {
+            if(confirm('Delete this product?')) {
+                products = products.filter(p => p.id !== id);
+                syncData();
+            }
+        }
+
+        // --- SUPPLIER LOGIC (NEW FEATURE INTEGRATED) ---
         document.getElementById('addSupplierForm').onsubmit = function(e) {
             e.preventDefault();
             const newSupplier = {
@@ -404,6 +412,14 @@
             syncData();
         };
 
+        function deleteSupplier(id) {
+            if(confirm('Delete this supplier?')) {
+                suppliers = suppliers.filter(s => s.id !== id);
+                syncData();
+            }
+        }
+
+        // --- SALES LOGIC ---
         document.getElementById('sellForm').onsubmit = function(e) {
             e.preventDefault();
             const id = parseInt(document.getElementById('sellProductId').value);
@@ -429,20 +445,6 @@
                 alert("Not enough stock!");
             }
         };
-
-        function deleteProduct(id) {
-            if(confirm('Delete this product?')) {
-                products = products.filter(p => p.id !== id);
-                syncData();
-            }
-        }
-
-        function deleteSupplier(id) {
-            if(confirm('Delete this supplier?')) {
-                suppliers = suppliers.filter(s => s.id !== id);
-                syncData();
-            }
-        }
 
         // --- UI RENDERING ---
         function renderAll() {
@@ -588,6 +590,13 @@
             document.getElementById('maxStock').innerText = stock;
             document.getElementById('sellQty').max = stock;
             openModal('sellModal');
+        }
+
+        function clearAllData() {
+            if(confirm("DANGER: This will delete ALL products, sales, and suppliers. Proceed?")) {
+                localStorage.clear();
+                location.reload();
+            }
         }
 
         function logout() {
