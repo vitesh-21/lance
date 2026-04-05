@@ -79,9 +79,6 @@
         }
         .confirm-btn:hover { background: #00cc55; }
         #phoneGroup { display: none; }
-        
-        /* Hidden Receipt for Printing */
-        #receipt { display: none; color: #000; background: white; padding: 20px; font-family: monospace; }
     </style>
 </head>
 <body>
@@ -96,7 +93,7 @@
             <label>Product:</label>
             <select id="productSelect" onchange="updatePriceDisplay()">
                 <option value="" disabled selected>-- Select Item --</option>
-                </select>
+            </select>
         </div>
 
         <div class="input-group">
@@ -143,22 +140,29 @@
 </div>
 
 <script>
-    // Initialize data from LocalStorage (Syncs with your Admin Dashboard)
-    let products = JSON.parse(localStorage.getItem('products')) || [];
-    let sales = JSON.parse(localStorage.getItem('sales')) || [];
+    // These link directly to the data used by your Admin Dashboard
     let cart = [];
     let total = 0;
 
-    // Load available products into the dropdown
+    // Load Data FRESH from LocalStorage every time to ensure sync with Admin
+    function getLatestData() {
+        return {
+            products: JSON.parse(localStorage.getItem('products')) || [],
+            sales: JSON.parse(localStorage.getItem('sales')) || []
+        };
+    }
+
     function loadProducts() {
+        const { products } = getLatestData();
         const select = document.getElementById("productSelect");
         select.innerHTML = '<option value="" disabled selected>-- Select Item --</option>';
         
         products.forEach(p => {
+            // Only show items that are actually in the shop (stock > 0)
             if(p.qty > 0) {
                 let opt = document.createElement("option");
                 opt.value = p.id;
-                opt.text = `${p.name} (Stock: ${p.qty})`;
+                opt.text = `${p.name} (Available: ${p.qty})`;
                 opt.dataset.price = p.price;
                 opt.dataset.stock = p.qty;
                 select.appendChild(opt);
@@ -166,15 +170,15 @@
         });
     }
 
-    function togglePhoneInput() {
-        let method = document.getElementById("paymentMethod").value;
-        document.getElementById("phoneGroup").style.display = (method === "M-Pesa") ? "flex" : "none";
-    }
-
     function updatePriceDisplay(){
         let select = document.getElementById("productSelect");
         let price = select.options[select.selectedIndex].dataset.price;
-        document.getElementById("priceDisplay").innerText = price;
+        document.getElementById("priceDisplay").innerText = parseFloat(price).toFixed(2);
+    }
+
+    function togglePhoneInput() {
+        let method = document.getElementById("paymentMethod").value;
+        document.getElementById("phoneGroup").style.display = (method === "M-Pesa") ? "flex" : "none";
     }
 
     function addToCart(){
@@ -187,8 +191,9 @@
         let name = select.options[select.selectedIndex].text.split(' (')[0];
         let price = parseFloat(select.options[select.selectedIndex].dataset.price);
 
+        // STAGE 1 CHECK: Can't sell if quantity is higher than available stock
         if(qty > stock) {
-            alert("Error: Insufficient stock!");
+            alert(`Error: Only ${stock} units available in shop!`);
             return;
         }
 
@@ -202,7 +207,7 @@
     function updateCartUI(){
         let cartDiv = document.getElementById("cartList");
         cartDiv.innerHTML = cart.map(item => `
-            <div>${item.name} x${item.qty} <span style="float:right">Ksh ${item.total}</span></div>
+            <div>${item.name} x${item.qty} <span style="float:right">Ksh ${item.total.toFixed(2)}</span></div>
         `).join('');
         document.getElementById("grandTotal").innerText = total.toLocaleString();
     }
@@ -218,15 +223,27 @@
             if(!mpesaCode) return;
         }
 
-        // 1. Process Stock Deductions
+        // FETCH LATEST DATA RIGHT BEFORE SAVING (In case Admin changed stock while POS was open)
+        let data = getLatestData();
+        let products = data.products;
+        let sales = data.sales;
+
+        // 1. Process Stock Deductions and Record for Admin
         cart.forEach(cartItem => {
             let pIndex = products.findIndex(p => p.id == cartItem.id);
             if(pIndex !== -1) {
-                products[pIndex].qty -= cartItem.qty; // Subtract stock
+                // STAGE 2 CHECK: Verify stock one last time
+                if(products[pIndex].qty >= cartItem.qty) {
+                    products[pIndex].qty -= cartItem.qty; 
+                } else {
+                    alert(`Critical Error: ${cartItem.name} stock changed by Admin. Please restart sale.`);
+                    location.reload();
+                    return;
+                }
             }
         });
 
-        // 2. Create Sale Record
+        // 2. Create Sale Record for Admin Sales History
         let newSale = {
             saleId: "S-" + Date.now(),
             date: new Date().toLocaleString(),
@@ -237,30 +254,30 @@
         };
         sales.push(newSale);
 
-        // 3. Save to LocalStorage
+        // 3. Save BACK to LocalStorage (This updates Admin instantly)
         localStorage.setItem('products', JSON.stringify(products));
         localStorage.setItem('sales', JSON.stringify(sales));
 
-        alert("✅ TRANSACTION SUCCESSFUL!\nStock Updated & Sale Recorded.");
+        alert("✅ TRANSACTION SUCCESSFUL!\nAdmin Inventory & Sales records updated.");
         
-        // Print and Reset
         printReceipt(newSale);
         location.reload();
     }
 
     function printReceipt(sale) {
-        let itemsHtml = sale.items.map(i => `<p>${i.name} x${i.qty} @ ${i.price} = ${i.total}</p>`).join('');
+        let itemsHtml = sale.items.map(i => `<p>${i.name} x${i.qty} = ${i.total.toFixed(2)}</p>`).join('');
         let newWindow = window.open("", "", "width=300,height=600");
         newWindow.document.write(`
             <html>
-            <body style="font-family:monospace; text-align:center;">
+            <body style="font-family:monospace; text-align:center; padding: 20px;">
                 <h3>SMART SHOP POS</h3>
                 <p>${sale.date}</p>
                 <hr>
                 ${itemsHtml}
                 <hr>
-                <h4>TOTAL: Ksh ${sale.total}</h4>
-                <p>Payment: ${sale.payment} ${sale.code ? '('+sale.code+')' : ''}</p>
+                <h4>TOTAL: Ksh ${sale.total.toFixed(2)}</h4>
+                <p>Paid via: ${sale.payment}</p>
+                ${sale.code ? '<p>Code: '+sale.code+'</p>' : ''}
                 <p>--- THANK YOU ---</p>
                 <script>window.onload = function() { window.print(); window.close(); }<\/script>
             </body>
@@ -268,7 +285,6 @@
         `);
     }
 
-    // Startup
     window.onload = loadProducts;
 </script>
 </body>
