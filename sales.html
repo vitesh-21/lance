@@ -140,14 +140,14 @@
 </div>
 
 <script>
-    // These link directly to the data used by your Admin Dashboard
     let cart = [];
     let total = 0;
 
-    // Load Data FRESH from LocalStorage every time to ensure sync with Admin
+    // 1. REFRESH DATA FROM STORAGE
     function getLatestData() {
         return {
-            products: JSON.parse(localStorage.getItem('products')) || [],
+            // Checks for 'products' or 'Products' just in case
+            products: JSON.parse(localStorage.getItem('products') || localStorage.getItem('Products')) || [],
             sales: JSON.parse(localStorage.getItem('sales')) || []
         };
     }
@@ -157,14 +157,25 @@
         const select = document.getElementById("productSelect");
         select.innerHTML = '<option value="" disabled selected>-- Select Item --</option>';
         
+        if (products.length === 0) {
+            console.warn("POS: No products found in localStorage.");
+            return;
+        }
+
         products.forEach(p => {
-            // Only show items that are actually in the shop (stock > 0)
-            if(p.qty > 0) {
+            // PROPERTY MAPPING: Handles different naming conventions from Admin
+            let name = p.name || p.product_name || p.itemName || "Unknown";
+            let price = parseFloat(p.price || p.unitPrice || 0);
+            let qty = parseInt(p.qty || p.quantity || p.stock || 0);
+            let id = p.id || p.productID || index;
+
+            if(qty > 0) {
                 let opt = document.createElement("option");
-                opt.value = p.id;
-                opt.text = `${p.name} (Available: ${p.qty})`;
-                opt.dataset.price = p.price;
-                opt.dataset.stock = p.qty;
+                opt.value = id;
+                opt.text = `${name} (Stock: ${qty})`;
+                opt.dataset.price = price;
+                opt.dataset.stock = qty;
+                opt.dataset.realName = name; // Store clean name without the stock text
                 select.appendChild(opt);
             }
         });
@@ -172,6 +183,7 @@
 
     function updatePriceDisplay(){
         let select = document.getElementById("productSelect");
+        if(select.selectedIndex <= 0) return;
         let price = select.options[select.selectedIndex].dataset.price;
         document.getElementById("priceDisplay").innerText = parseFloat(price).toFixed(2);
     }
@@ -183,17 +195,18 @@
 
     function addToCart(){
         let select = document.getElementById("productSelect");
-        let qty = parseInt(document.getElementById("qtyInput").value);
+        let qtyInput = document.getElementById("qtyInput");
+        let qty = parseInt(qtyInput.value);
 
         if(!select.value) { alert("Please select a product"); return; }
         
-        let stock = parseInt(select.options[select.selectedIndex].dataset.stock);
-        let name = select.options[select.selectedIndex].text.split(' (')[0];
-        let price = parseFloat(select.options[select.selectedIndex].dataset.price);
+        let opt = select.options[select.selectedIndex];
+        let stock = parseInt(opt.dataset.stock);
+        let name = opt.dataset.realName;
+        let price = parseFloat(opt.dataset.price);
 
-        // STAGE 1 CHECK: Can't sell if quantity is higher than available stock
         if(qty > stock) {
-            alert(`Error: Only ${stock} units available in shop!`);
+            alert(`Error: Only ${stock} units available!`);
             return;
         }
 
@@ -202,6 +215,7 @@
         
         total += itemTotal;
         updateCartUI();
+        qtyInput.value = 1;
     }
 
     function updateCartUI(){
@@ -223,27 +237,24 @@
             if(!mpesaCode) return;
         }
 
-        // FETCH LATEST DATA RIGHT BEFORE SAVING (In case Admin changed stock while POS was open)
         let data = getLatestData();
         let products = data.products;
         let sales = data.sales;
 
-        // 1. Process Stock Deductions and Record for Admin
+        // 1. UPDATE ADMIN STOCK
         cart.forEach(cartItem => {
-            let pIndex = products.findIndex(p => p.id == cartItem.id);
+            // Find by ID or Name
+            let pIndex = products.findIndex(p => (p.id || p.productID) == cartItem.id);
             if(pIndex !== -1) {
-                // STAGE 2 CHECK: Verify stock one last time
-                if(products[pIndex].qty >= cartItem.qty) {
-                    products[pIndex].qty -= cartItem.qty; 
-                } else {
-                    alert(`Critical Error: ${cartItem.name} stock changed by Admin. Please restart sale.`);
-                    location.reload();
-                    return;
-                }
+                // Ensure we use the correct quantity key the Admin uses
+                let qtyKey = products[pIndex].qty !== undefined ? 'qty' : 
+                             products[pIndex].quantity !== undefined ? 'quantity' : 'stock';
+                
+                products[pIndex][qtyKey] -= cartItem.qty; 
             }
         });
 
-        // 2. Create Sale Record for Admin Sales History
+        // 2. RECORD SALE FOR ADMIN
         let newSale = {
             saleId: "S-" + Date.now(),
             date: new Date().toLocaleString(),
@@ -254,36 +265,18 @@
         };
         sales.push(newSale);
 
-        // 3. Save BACK to LocalStorage (This updates Admin instantly)
+        // 3. SYNC BOTH BACK TO STORAGE
         localStorage.setItem('products', JSON.stringify(products));
         localStorage.setItem('sales', JSON.stringify(sales));
 
-        alert("✅ TRANSACTION SUCCESSFUL!\nAdmin Inventory & Sales records updated.");
-        
-        printReceipt(newSale);
+        alert("✅ TRANSACTION SUCCESSFUL!\nStock deducted and sale recorded.");
         location.reload();
     }
 
-    function printReceipt(sale) {
-        let itemsHtml = sale.items.map(i => `<p>${i.name} x${i.qty} = ${i.total.toFixed(2)}</p>`).join('');
-        let newWindow = window.open("", "", "width=300,height=600");
-        newWindow.document.write(`
-            <html>
-            <body style="font-family:monospace; text-align:center; padding: 20px;">
-                <h3>SMART SHOP POS</h3>
-                <p>${sale.date}</p>
-                <hr>
-                ${itemsHtml}
-                <hr>
-                <h4>TOTAL: Ksh ${sale.total.toFixed(2)}</h4>
-                <p>Paid via: ${sale.payment}</p>
-                ${sale.code ? '<p>Code: '+sale.code+'</p>' : ''}
-                <p>--- THANK YOU ---</p>
-                <script>window.onload = function() { window.print(); window.close(); }<\/script>
-            </body>
-            </html>
-        `);
-    }
+    // Auto-refresh if you add stock in another tab
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'products' || e.key === 'Products') loadProducts();
+    });
 
     window.onload = loadProducts;
 </script>
