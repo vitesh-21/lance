@@ -12,90 +12,13 @@
         .login-header h2 { color: #2c3e50; margin-bottom: 20px; }
         .input-group { position: relative; margin-bottom: 15px; }
         .input-group input, .input-group select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; outline: none; background: #f9f9f9; }
-        
-        /* Updated Footer Styling */
-        .form-footer { 
-            margin-top: 15px; 
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .forgot-link { color: #3498db; text-decoration: none; font-size: 0.85rem; }
-        .forgot-link:hover { text-decoration: underline; }
-        
-        .error-text { background: #fdeaea; color: #e74c3c; padding: 10px; border-radius: 6px; font-size: 0.85rem; margin-bottom: 15px; display: none; }
-        
-        button { width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        .error-text { background: #fdeaea; color: #e74c3c; padding: 10px; border-radius: 6px; font-size: 0.85rem; margin-bottom: 15px; display: none; border: 1px solid #fadbd8; }
+        button { width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 15px; }
         button:hover { background: #2980b9; }
-        
-        .register-link { display: block; margin-top: 5px; font-size: 0.9rem; color: #7f8c8d; text-decoration: none; }
-        .register-link:hover { color: #34495e; }
-    </style>
-</head>
-<body>
-
-<div class="login-container">
-    <div class="login-header">
-        <i class="fas fa-boxes-stacked fa-3x" style="color:#3498db; margin-bottom:10px;"></i>
-        <h2>STOCK MANAGER</h2>
-    </div>
-
-    <form id="loginForm" onsubmit="handleLogin(event)">
-        <div class="input-group"><input type="text" id="username" placeholder="Username" required></div>
-        <div class="input-group"><input type="password" id="password" placeholder="Password" required></div>
-        <div class="input-group">
-            <select id="role" required>
-                <option value="">Select Role</option>
-                <option value="staff">Staff</option>
-                <option value="admin">Admin</option>
-            </select>
-        </div>
-
-        <div id="error-box" class="error-text"></div>
-
-        <button type="submit">Login <i class="fas fa-sign-in-alt"></i></button>
-
-        <div class="form-footer">
-            <a href="forgot-password.html" class="forgot-link">Forgot Password?</a>
-            <a href="register.html" class="register-link">Don't have an account? Register here</a>
-        </div>
-    </form>
-</div>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Login | Stock System</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background: linear-gradient(135deg, #1e272e, #2f3640); height: 100vh; display: flex; justify-content: center; align-items: center; }
-        .login-container { background: #fff; width: 100%; max-width: 380px; padding: 40px; border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); text-align: center; }
-        .login-header h2 { color: #2c3e50; margin-bottom: 20px; }
-        .input-group { position: relative; margin-bottom: 15px; }
-        .input-group input, .input-group select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; outline: none; background: #f9f9f9; }
-        
-        /* Updated Footer Styling */
-        .form-footer { 
-            margin-top: 15px; 
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
+        .form-footer { display: flex; flex-direction: column; gap: 10px; }
         .forgot-link { color: #3498db; text-decoration: none; font-size: 0.85rem; }
-        .forgot-link:hover { text-decoration: underline; }
-        
-        .error-text { background: #fdeaea; color: #e74c3c; padding: 10px; border-radius: 6px; font-size: 0.85rem; margin-bottom: 15px; display: none; }
-        
-        button { width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; }
-        button:hover { background: #2980b9; }
-        
-        .register-link { display: block; margin-top: 5px; font-size: 0.9rem; color: #7f8c8d; text-decoration: none; }
-        .register-link:hover { color: #34495e; }
+        .register-link { color: #7f8c8d; text-decoration: none; font-size: 0.9rem; }
+        .forgot-link:hover, .register-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -132,17 +55,29 @@
     function handleLogin(event) {
         event.preventDefault();
         const userIn = document.getElementById('username').value.trim();
-        const passIn = document.getElementById('password').value;
+        const passIn = document.getElementById('password').value.trim();
         const roleIn = document.getElementById('role').value;
         const errorBox = document.getElementById('error-box');
 
+        // 1. Load users from LocalStorage
         let users = JSON.parse(localStorage.getItem('systemUsers')) || [];
         
+        // 2. Add default admin if list is empty
         if (users.length === 0) {
             users.push({username: "admin", password: "1234", role: "admin"});
+            localStorage.setItem('systemUsers', JSON.stringify(users));
         }
 
-        const foundUser = users.find(u => u.username === userIn && u.password === passIn && u.role === roleIn);
+        // DEBUGGING: Press F12 to see these in the browser console
+        console.log("Database Users:", users);
+        console.log("Input Data:", {userIn, passIn, roleIn});
+
+        // 3. Match Logic
+        const foundUser = users.find(u => 
+            u.username === userIn && 
+            u.password === passIn && 
+            u.role === roleIn
+        );
 
         if (foundUser) {
             localStorage.setItem('isLoggedIn', 'true');
@@ -151,10 +86,9 @@
         } else {
             errorBox.style.display = "block";
             errorBox.innerText = "Invalid credentials or role!";
+            console.error("Login failed: No matching user found.");
         }
     }
 </script>
-</body>
-</html>
 </body>
 </html>
