@@ -5,109 +5,159 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory Login | Stock System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
     <style>
-        /* Keeping your exact CSS styles */
+        /* Modern UI Styling */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        
         body {
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            height: 100vh; display: flex; justify-content: center; align-items: center;
+            background: linear-gradient(135deg, #1e272e, #2f3640);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
+
         .login-container {
-            background: #ffffff; width: 100%; max-width: 400px; padding: 40px;
-            border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); text-align: center;
+            background: #ffffff;
+            width: 100%;
+            max-width: 380px;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            text-align: center;
         }
-        .login-header i { color: #3498db; margin-bottom: 15px; }
-        .login-header h2 { color: #2c3e50; font-size: 1.8rem; margin-bottom: 8px; letter-spacing: 1px; }
-        .login-header p { color: #7f8c8d; font-size: 0.9rem; margin-bottom: 30px; }
-        .input-group { position: relative; margin-bottom: 20px; text-align: left; }
-        .input-group i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #95a5a6; }
+
+        .login-header h2 { color: #2c3e50; margin-bottom: 20px; letter-spacing: 1px; }
+
+        .input-group { position: relative; margin-bottom: 15px; }
+
         .input-group input, .input-group select {
-            width: 100%; padding: 12px 15px 12px 45px; border: 1px solid #ddd;
-            border-radius: 8px; outline: none; background: #f9f9f9;
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            outline: none;
+            background: #f9f9f9;
+            font-size: 1rem;
         }
+
+        .input-group input:focus, .input-group select:focus {
+            border-color: #3498db;
+            background: #fff;
+        }
+
         .error-text {
-            background: #fdeaea; color: #e74c3c; padding: 10px; border-radius: 6px;
-            font-size: 0.85rem; margin-bottom: 15px; border: 1px solid #fadbd8; display: none;
+            background: #fdeaea;
+            color: #e74c3c;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+            border: 1px solid #fadbd8;
+            display: none; /* Hidden by default */
         }
+
         button {
-            width: 100%; padding: 12px; background: #3498db; color: white; border: none;
-            border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer;
-            display: flex; justify-content: center; align-items: center; gap: 10px;
+            width: 100%;
+            padding: 12px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
         }
-        button:hover { background: #2980b9; transform: translateY(-2px); }
+
+        button:hover { background: #2980b9; transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
     </style>
 </head>
 <body>
 
 <div class="login-container">
     <div class="login-header">
-        <i class="fas fa-boxes-stacked fa-3x"></i>
+        <i class="fas fa-boxes-stacked fa-3x" style="color:#3498db; margin-bottom:10px;"></i>
         <h2>STOCK MANAGER</h2>
-        <p>Enter your credentials to manage inventory</p>
     </div>
 
     <form id="loginForm" onsubmit="handleLogin(event)">
         <div class="input-group">
-            <i class="fas fa-user"></i>
             <input type="text" id="username" placeholder="Username" required>
         </div>
-
         <div class="input-group">
-            <i class="fas fa-lock"></i>
             <input type="password" id="password" placeholder="Password" required>
         </div>
-
         <div class="input-group">
-            <i class="fas fa-user-shield"></i>
             <select id="role" required>
-                <option value="" disabled selected>Select Role</option>
+                <option value="">Select Role</option>
                 <option value="staff">Staff</option>
                 <option value="admin">Admin</option>
             </select>
         </div>
 
-        <div id="error-message" class="error-text">
-            <i class="fas fa-exclamation-circle"></i> <span id="error-desc"></span>
+        <div id="error-box" class="error-text">
+            <i class="fas fa-exclamation-circle"></i> <span id="error-message"></span>
         </div>
 
         <button type="submit">
             <span>Login</span>
-            <i class="fas fa-arrow-right"></i>
+            <i class="fas fa-sign-in-alt"></i>
         </button>
     </form>
 </div>
 
 <script>
-    function handleLogin(e) {
-        e.preventDefault(); 
+    // --- 1. MOCK DATABASE ---
+    // In a real app, this data would be in your MySQL table.
+    const users = [
+        { username: "admin", password: "123", role: "admin" },
+        { username: "staff1", password: "456", role: "staff" }
+    ];
 
-        // Added .trim() to remove accidental spaces
-        const user = document.getElementById('username').value.trim();
-        const pass = document.getElementById('password').value.trim();
-        const role = document.getElementById('role').value;
-        const errorDiv = document.getElementById('error-message');
-        const errorDesc = document.getElementById('error-desc');
+    function handleLogin(event) {
+        // Prevent the page from refreshing
+        event.preventDefault();
 
-        // Reset error display
-        errorDiv.style.display = "none";
+        // --- 2. GET FORM DATA ---
+        const userVal = document.getElementById('username').value.trim();
+        const passVal = document.getElementById('password').value;
+        const roleVal = document.getElementById('role').value;
+        const errorBox = document.getElementById('error-box');
+        const errorMsg = document.getElementById('error-message');
 
-        console.log("Attempting login with:", user, role); // For debugging
+        // Hide error initially
+        errorBox.style.display = "none";
 
-        // Check credentials
-        if (user === "admin" && pass === "1234") {
-            console.log("Login successful! Redirecting...");
-            
-            // Save session data
+        // --- 3. VALIDATE ---
+        // Find if a user exists with matching username, password, AND role
+        const validUser = users.find(u => 
+            u.username === userVal && 
+            u.password === passVal && 
+            u.role === roleVal
+        );
+
+        if (validUser) {
+            // --- 4. SESSION HANDLING (Using LocalStorage) ---
             localStorage.setItem('isLoggedIn', 'true');
-            localStorage.setItem('userRole', role);
+            localStorage.setItem('userRole', validUser.role);
+            localStorage.setItem('username', validUser.username);
 
-            // Redirect
-            window.location.href = "admin.html"; 
+            // --- 5. REDIRECTION LOGIC ---
+            if (validUser.role === 'admin') {
+                window.location.href = "admin.html";
+            } else {
+                window.location.href = "sales.html";
+            }
         } else {
-            console.log("Login failed.");
-            errorDiv.style.display = "block";
-            errorDesc.innerText = "Invalid credentials. Try admin / 1234";
+            // --- 6. ERROR HANDLING ---
+            errorBox.style.display = "block";
+            errorMsg.innerText = "Invalid credentials or role selection!";
         }
     }
 </script>
