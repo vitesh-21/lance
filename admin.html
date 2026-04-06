@@ -622,7 +622,15 @@
         }
     }
 
-    function logout() { location.reload(); }
+   function logout() {
+    if (confirm("Are you sure you want to logout?")) {
+        // 1. If you use a session flag (e.g., 'isLoggedIn'), clear it:
+        // localStorage.removeItem('isLoggedIn'); 
+
+        // 2. Redirect to your login page
+        window.location.href = "index.html"; 
+    }
+}
 
     window.onload = renderAll;
 </script>
