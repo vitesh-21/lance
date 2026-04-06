@@ -113,53 +113,23 @@
 </div>
 
 <script>
-    // --- 1. MOCK DATABASE ---
-    // In a real app, this data would be in your MySQL table.
-    const users = [
-        { username: "admin", password: "123", role: "admin" },
-        { username: "staff1", password: "456", role: "staff" }
-    ];
-
     function handleLogin(event) {
-        // Prevent the page from refreshing
-        event.preventDefault();
+    event.preventDefault();
+    
+    const user = document.getElementById('username').value;
+    const pass = document.getElementById('password').value;
+    const role = document.getElementById('role').value;
 
-        // --- 2. GET FORM DATA ---
-        const userVal = document.getElementById('username').value.trim();
-        const passVal = document.getElementById('password').value;
-        const roleVal = document.getElementById('role').value;
-        const errorBox = document.getElementById('error-box');
-        const errorMsg = document.getElementById('error-message');
+    console.log("Attempting login with:", user, pass, role);
 
-        // Hide error initially
-        errorBox.style.display = "none";
-
-        // --- 3. VALIDATE ---
-        // Find if a user exists with matching username, password, AND role
-        const validUser = users.find(u => 
-            u.username === userVal && 
-            u.password === passVal && 
-            u.role === roleVal
-        );
-
-        if (validUser) {
-            // --- 4. SESSION HANDLING (Using LocalStorage) ---
-            localStorage.setItem('isLoggedIn', 'true');
-            localStorage.setItem('userRole', validUser.role);
-            localStorage.setItem('username', validUser.username);
-
-            // --- 5. REDIRECTION LOGIC ---
-            if (validUser.role === 'admin') {
-                window.location.href = "admin.html";
-            } else {
-                window.location.href = "sales.html";
-            }
-        } else {
-            // --- 6. ERROR HANDLING ---
-            errorBox.style.display = "block";
-            errorMsg.innerText = "Invalid credentials or role selection!";
-        }
+    if (user === "admin" && pass === "123") {
+        alert("Success! Redirecting...");
+        window.location.href = "admin.html";
+    } else {
+        alert("Login failed! Check console (F12) for details.");
+        console.error("Credentials did not match 'admin' and '123'");
     }
+}
 </script>
 
 </body>
