@@ -6,76 +6,18 @@
     <title>Inventory Login | Stock System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* Modern UI Styling */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        
-        body {
-            background: linear-gradient(135deg, #1e272e, #2f3640);
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .login-container {
-            background: #ffffff;
-            width: 100%;
-            max-width: 380px;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
-            text-align: center;
-        }
-
-        .login-header h2 { color: #2c3e50; margin-bottom: 20px; letter-spacing: 1px; }
-
+        body { background: linear-gradient(135deg, #1e272e, #2f3640); height: 100vh; display: flex; justify-content: center; align-items: center; }
+        .login-container { background: #fff; width: 100%; max-width: 380px; padding: 40px; border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); text-align: center; }
+        .login-header h2 { color: #2c3e50; margin-bottom: 20px; }
         .input-group { position: relative; margin-bottom: 15px; }
-
-        .input-group input, .input-group select {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            outline: none;
-            background: #f9f9f9;
-            font-size: 1rem;
-        }
-
-        .input-group input:focus, .input-group select:focus {
-            border-color: #3498db;
-            background: #fff;
-        }
-
-        .error-text {
-            background: #fdeaea;
-            color: #e74c3c;
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            margin-bottom: 15px;
-            border: 1px solid #fadbd8;
-            display: none; /* Hidden by default */
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            background: #3498db;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-        }
-
-        button:hover { background: #2980b9; transform: translateY(-1px); }
-        button:active { transform: translateY(0); }
+        .input-group input, .input-group select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; outline: none; background: #f9f9f9; }
+        .form-footer { text-align: right; margin-bottom: 20px; margin-top: -5px; }
+        .forgot-link { color: #3498db; text-decoration: none; font-size: 0.85rem; }
+        .error-text { background: #fdeaea; color: #e74c3c; padding: 10px; border-radius: 6px; font-size: 0.85rem; margin-bottom: 15px; display: none; }
+        button { width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        button:hover { background: #2980b9; }
+        .register-link { display: block; margin-top: 20px; font-size: 0.9rem; color: #7f8c8d; text-decoration: none; }
     </style>
 </head>
 <body>
@@ -87,12 +29,8 @@
     </div>
 
     <form id="loginForm" onsubmit="handleLogin(event)">
-        <div class="input-group">
-            <input type="text" id="username" placeholder="Username" required>
-        </div>
-        <div class="input-group">
-            <input type="password" id="password" placeholder="Password" required>
-        </div>
+        <div class="input-group"><input type="text" id="username" placeholder="Username" required></div>
+        <div class="input-group"><input type="password" id="password" placeholder="Password" required></div>
         <div class="input-group">
             <select id="role" required>
                 <option value="">Select Role</option>
@@ -101,57 +39,44 @@
             </select>
         </div>
 
-        <div id="error-box" class="error-text">
-            <i class="fas fa-exclamation-circle"></i> <span id="error-message"></span>
+        <div class="form-footer">
+            <a href="forgot-password.html" class="forgot-link">Forgot Password?</a>
         </div>
 
-        <button type="submit">
-            <span>Login</span>
-            <i class="fas fa-sign-in-alt"></i>
-        </button>
+        <div id="error-box" class="error-text"></div>
+
+        <button type="submit">Login <i class="fas fa-sign-in-alt"></i></button>
+        <a href="register.html" class="register-link">Don't have an account? Register here</a>
     </form>
 </div>
 
 <script>
     function handleLogin(event) {
-        // 1. Prevent the form from refreshing the page
         event.preventDefault();
-
-        // 2. Get the values from the input fields
-        const user = document.getElementById('username').value.trim();
-        const pass = document.getElementById('password').value.trim();
-        const role = document.getElementById('role').value;
+        const userIn = document.getElementById('username').value.trim();
+        const passIn = document.getElementById('password').value;
+        const roleIn = document.getElementById('role').value;
         const errorBox = document.getElementById('error-box');
-        const errorMsg = document.getElementById('error-message');
 
-        // Hide error box at the start of every attempt
-        errorBox.style.display = "none";
+        // 1. Get users from local storage
+        let users = JSON.parse(localStorage.getItem('systemUsers')) || [];
+        
+        // 2. Add a default admin if none exists
+        if (users.length === 0) {
+            users.push({username: "admin", password: "1234", role: "admin"});
+        }
 
-        // 3. Check Credentials (Matching your PHP logic: user 'admin', pass '1234')
-        if (user === "admin" && pass === "1234") {
-            
-            // Save the session locally so the next page knows who is logged in
+        const foundUser = users.find(u => u.username === userIn && u.password === passIn && u.role === roleIn);
+
+        if (foundUser) {
             localStorage.setItem('isLoggedIn', 'true');
-            localStorage.setItem('userRole', role);
-
-            // 4. Role-Based Redirection Logic
-            if (role === "admin") {
-                window.location.href = "admin.html";
-            } else if (role === "staff") {
-                window.location.href = "sales.html";
-            } else {
-                // This handles the case where "Select Role" is still empty
-                errorBox.style.display = "block";
-                errorMsg.innerText = "Please select a role (Admin or Staff).";
-            }
-
+            localStorage.setItem('userRole', foundUser.role);
+            window.location.href = (foundUser.role === "admin") ? "admin.html" : "sales.html";
         } else {
-            // 5. If login fails
             errorBox.style.display = "block";
-            errorMsg.innerText = "Invalid username or password. Try admin / 1234";
+            errorBox.innerText = "Invalid credentials or role!";
         }
     }
 </script>
-
 </body>
 </html>
