@@ -114,22 +114,43 @@
 
 <script>
     function handleLogin(event) {
-    event.preventDefault();
-    
-    const user = document.getElementById('username').value;
-    const pass = document.getElementById('password').value;
-    const role = document.getElementById('role').value;
+        // 1. Prevent the form from refreshing the page
+        event.preventDefault();
 
-    console.log("Attempting login with:", user, pass, role);
+        // 2. Get the values from the input fields
+        const user = document.getElementById('username').value.trim();
+        const pass = document.getElementById('password').value.trim();
+        const role = document.getElementById('role').value;
+        const errorBox = document.getElementById('error-box');
+        const errorMsg = document.getElementById('error-message');
 
-    if (user === "admin" && pass === "123") {
-        alert("Success! Redirecting...");
-        window.location.href = "admin.html";
-    } else {
-        alert("Login failed! Check console (F12) for details.");
-        console.error("Credentials did not match 'admin' and '123'");
+        // Hide error box at the start of every attempt
+        errorBox.style.display = "none";
+
+        // 3. Check Credentials (Matching your PHP logic: user 'admin', pass '1234')
+        if (user === "admin" && pass === "1234") {
+            
+            // Save the session locally so the next page knows who is logged in
+            localStorage.setItem('isLoggedIn', 'true');
+            localStorage.setItem('userRole', role);
+
+            // 4. Role-Based Redirection Logic
+            if (role === "admin") {
+                window.location.href = "admin.html";
+            } else if (role === "staff") {
+                window.location.href = "sales.html";
+            } else {
+                // This handles the case where "Select Role" is still empty
+                errorBox.style.display = "block";
+                errorMsg.innerText = "Please select a role (Admin or Staff).";
+            }
+
+        } else {
+            // 5. If login fails
+            errorBox.style.display = "block";
+            errorMsg.innerText = "Invalid username or password. Try admin / 1234";
+        }
     }
-}
 </script>
 
 </body>
