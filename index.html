@@ -12,12 +12,25 @@
         .login-header h2 { color: #2c3e50; margin-bottom: 20px; }
         .input-group { position: relative; margin-bottom: 15px; }
         .input-group input, .input-group select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; outline: none; background: #f9f9f9; }
-        .form-footer { text-align: right; margin-bottom: 20px; margin-top: -5px; }
+        
+        /* Updated Footer Styling */
+        .form-footer { 
+            margin-top: 15px; 
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
         .forgot-link { color: #3498db; text-decoration: none; font-size: 0.85rem; }
+        .forgot-link:hover { text-decoration: underline; }
+        
         .error-text { background: #fdeaea; color: #e74c3c; padding: 10px; border-radius: 6px; font-size: 0.85rem; margin-bottom: 15px; display: none; }
+        
         button { width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; }
         button:hover { background: #2980b9; }
-        .register-link { display: block; margin-top: 20px; font-size: 0.9rem; color: #7f8c8d; text-decoration: none; }
+        
+        .register-link { display: block; margin-top: 5px; font-size: 0.9rem; color: #7f8c8d; text-decoration: none; }
+        .register-link:hover { color: #34495e; }
     </style>
 </head>
 <body>
@@ -39,14 +52,14 @@
             </select>
         </div>
 
-        <div class="form-footer">
-            <a href="forgot-password.html" class="forgot-link">Forgot Password?</a>
-        </div>
-
         <div id="error-box" class="error-text"></div>
 
         <button type="submit">Login <i class="fas fa-sign-in-alt"></i></button>
-        <a href="register.html" class="register-link">Don't have an account? Register here</a>
+
+        <div class="form-footer">
+            <a href="forgot-password.html" class="forgot-link">Forgot Password?</a>
+            <a href="register.html" class="register-link">Don't have an account? Register here</a>
+        </div>
     </form>
 </div>
 
@@ -58,10 +71,8 @@
         const roleIn = document.getElementById('role').value;
         const errorBox = document.getElementById('error-box');
 
-        // 1. Get users from local storage
         let users = JSON.parse(localStorage.getItem('systemUsers')) || [];
         
-        // 2. Add a default admin if none exists
         if (users.length === 0) {
             users.push({username: "admin", password: "1234", role: "admin"});
         }
